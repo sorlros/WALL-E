@@ -1,0 +1,22 @@
+venv/
+.DS_Store
+datasets/
+__pycache__/
+*.pyc
+.env
+.idea/
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Flutter
+build/
+.dart_tool/
+.pub-cache/
+.pub/
+
+# AI Models & Data (용량이 커서 따로 관리 권장)
+datasets/
+backend/models/*.pt
+backend/models/*.mlmodel

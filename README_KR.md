@@ -95,11 +95,19 @@ cd WallE
 ```
 
 ### 3. 자동 설정 (Recommended)
-팀원들은 `setup.sh` 스크립트를 실행하여 **RTMP 서버(MediaMTX)**와 **Backend 환경**을 한 번에 설정할 수 있습니다.
+
+#### Mac / Linux
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
+
+#### Windows
+Please run the `setup.bat` script by double-clicking it or via Command Prompt:
+```cmd
+setup.bat
+```
+*(Windows users will need to download MediaMTX manually as guided by the script)*
 
 ### 4. 수동 설정 (Manual Setup)
 만약 자동 설정이 실패하거나 수동으로 설정하려면:
@@ -119,10 +127,18 @@ pip install -r requirements.txt
 ```
 
 ### 5. 서버 실행 (Run Server)
+
+#### Mac / Linux
 ```bash
 # 1. 가상환경 활성화 (프로젝트 루트에서)
 source backend/.venv/bin/activate
 
 # 2. 서버 실행
+uvicorn backend.main:app --reload
+```
+
+#### Windows
+```cmd
+backend\.venv\Scripts\activate
 uvicorn backend.main:app --reload
 ```

@@ -91,13 +91,54 @@ Python, Java, Flutter의 필수 버전이 설치되어 있는지 확인해주세
 ### 2. 저장소 복제 (Clone Repository)
 ```bash
 git clone https://github.com/WallEproject/WallE.git
-cd skypatch
+cd WallE
 ```
 
-### 3. 설정 예시 (Setup Example)
+### 3. 자동 설정 (Recommended)
+
+#### Mac / Linux
 ```bash
-# Python 가상환경 설정
-python3.10 -m venv venv
-source venv/bin/activate
+chmod +x setup.sh
+./setup.sh
+```
+
+#### Windows
+Please run the `setup.bat` script by double-clicking it or via Command Prompt:
+```cmd
+setup.bat
+```
+*(Windows users will need to download MediaMTX manually as guided by the script)*
+
+### 4. 수동 설정 (Manual Setup)
+만약 자동 설정이 실패하거나 수동으로 설정하려면:
+
+**1) RTMP 서버 설치 (Mac)**
+```bash
+brew install mediamtx
+brew services start mediamtx
+```
+
+**2) Python 백엔드 설정**
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+### 5. 서버 실행 (Run Server)
+
+#### Mac / Linux
+```bash
+# 1. 가상환경 활성화 (프로젝트 루트에서)
+source backend/.venv/bin/activate
+
+# 2. 서버 실행
+uvicorn backend.main:app --reload
+```
+
+#### Windows
+```cmd
+backend\.venv\Scripts\activate
+uvicorn backend.main:app --reload
 ```

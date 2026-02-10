@@ -1,0 +1,37 @@
+###############################################
+# MediaMTX Configuration File
+###############################################
+
+# RTMP Settings (Used by Drone)
+rtmp: yes
+rtmpAddress: :1935
+
+# ---------------------------------------------
+# Port Conflict Resolution (Backend uses 8000)
+# ---------------------------------------------
+
+# HLS (HTTP Live Streaming) - Moved from 8888 -> 8080 or kept different
+# MediaMTX default is 8888, let's keep it 8888.
+hls: yes
+hlsAddress: :8888
+
+# WebRTC - Moved from 8889
+webrtc: yes
+webrtcAddress: :8889
+
+# HTTP API (This was the conflict!)
+# Default is :9997, but sometimes it tries :8000/8080 depending on version
+# Let's set it explicitly to a safe port
+api: yes
+apiAddress: :9997
+
+# RTSP (If needed later)
+rtsp: yes
+rtspAddress: :8554
+
+# ---------------------------------------------
+# Path Configuration (Allow all paths)
+# ---------------------------------------------
+paths:
+  all:
+

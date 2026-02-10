@@ -1,10 +1,9 @@
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from backend.core.stream_manager import StreamManager
+from backend.core.stream_manager import stream_manager
 
 router = APIRouter()
-stream_manager = StreamManager()
 
 @router.get("/live")
 async def video_feed():

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/new_mission_screen.dart';
-import 'screens/live_feed_screen.dart';
-import 'screens/analysis_report_screen.dart';
+import 'screens/gallery_screen.dart';
+import 'screens/live_streaming_screen.dart';
 
 void main() {
   runApp(const WallEApp());
@@ -13,58 +13,62 @@ class WallEApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Wall-E Drone Controller',
+      title: 'Wall-E Drone Inspection',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
-        useMaterial3: true,
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: const Color(0xFF101622),
+        fontFamily: 'Noto Sans KR',
       ),
-      home: const MainNavigationScreen(),
+      home: const MainNavigator(),
     );
   }
 }
 
-class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+class MainNavigator extends StatefulWidget {
+  const MainNavigator({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  State<MainNavigator> createState() => _MainNavigatorState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _selectedIndex = 0;
+class _MainNavigatorState extends State<MainNavigator> {
+  int _currentIndex = 1; // Start with New Mission (Middle Tab)
 
-  // List of screens for bottom navigation
-  static const List<Widget> _screens = <Widget>[
-    NewMissionScreen(),
-    LiveFeedScreen(),
-    AnalysisReportScreen(),
+  final List<Widget> _screens = [
+    const LiveStreamingScreen(), // Index 0: Live Stream
+    const NewMissionScreen(), // Index 1: Home / New Mission
+    const GalleryScreen(), // Index 2: Gallery
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_location_alt),
-            label: 'New Mission',
-          ),
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        backgroundColor: const Color(0xFF101622),
+        selectedItemColor: const Color(0xFF135BEC),
+        unselectedItemColor: Colors.grey,
+        items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.videocam),
-            label: 'Live Feed',
+            label: '실시간 영상',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Report'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            label: '새 미션',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.grid_view),
+            label: '라이브러리', // Gallery
+          ),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
-        onTap: _onItemTapped,
       ),
     );
   }

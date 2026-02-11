@@ -17,16 +17,16 @@ logger = logging.getLogger(__name__)
 
 class StreamManager:
     def __init__(self):
-        self.rtmp_url = os.getenv("RTMP_URL", 0)
+        self.rtmp_url = os.getenv("RTMP_URL", "rtmp://localhost:1935/live/test")
         # If rtmp_url is a digit string (e.g. "0"), convert to int for webcam index
         if isinstance(self.rtmp_url, str) and self.rtmp_url.isdigit():
             self.rtmp_url = int(self.rtmp_url)
         
         # Initialize YOLO model
-        # Using 'yolov8n.pt' (nano) for speed. Can be changed to custom trained model later.
-        logger.info("Loading YOLOv8 model...")
-        self.model = YOLO("yolov8n.pt")
-        logger.info("YOLOv8 model loaded.")
+        # Using 'yolo11n.pt' (nano) as requested.
+        logger.info("Loading YOLO11n model...")
+        self.model = YOLO("yolo11n.pt")
+        logger.info("YOLO11n model loaded.")
 
         self.cap = None
         self.is_running = False
@@ -75,31 +75,32 @@ class StreamManager:
         return canvas
 
     def _capture_loop(self):
-        """Background thread to handle connection and reading frames."""
+        """Background thread to handle connection, reading frames, and AI inference."""
         logger.info("Starting capture loop...")
         
-        frame_interval = 3  # Process every 3rd frame
+        frame_interval = 3  # Run AI every 3 frames
         frame_count = 0
-        last_annotated_frame = None
-
+        
+        # Cache for the last detection results (bounding boxes)
+        # Assuming YOLO results object or just list of boxes
+        last_results = None 
+        
         while self.is_running:
-            # If no capture object or not opened, try to connect
+            # Reconnect logic
             if self.cap is None or not self.cap.isOpened():
                 try:
                     logger.info(f"Connecting to stream: {self.rtmp_url}")
                     self.cap = cv2.VideoCapture(self.rtmp_url)
-                    
                     if not self.cap.isOpened():
-                        logger.error(f"Failed to open stream at {self.rtmp_url}. Retrying in 2s...")
+                        logger.error(f"Failed to open stream. Retrying in 2s...")
                         time.sleep(2)
                         continue
                     
-                    # Connection successful
+                    # Buffer size optimization for low latency
                     self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                     logger.info("Stream connected successfully.")
-                    
                 except Exception as e:
-                    logger.error(f"Error connecting to stream: {e}")
+                    logger.error(f"Error connecting: {e}")
                     time.sleep(2)
                     continue
 
@@ -115,58 +116,43 @@ class StreamManager:
                 
                 frame_count += 1
                 
-                # Check if we should run inference
+                # 1. Preprocess every frame (needed for consistent display size)
+                processed_frame = self._preprocess_frame(frame)
+
+                # 2. Inference (Interval Check)
                 if frame_count % frame_interval == 0:
-                    # 1. Preprocess
-                    processed_frame = self._preprocess_frame(frame)
-
-                    # 2. Inference: Run YOLOv8 on the frame
-                    # conf=0.5: Confidence threshold
-                    results = self.model(processed_frame, conf=0.5, verbose=False) 
-                    
-                    # 3. Post-process: Plot results on the frame
-                    # plot() returns a BGR numpy array
-                    last_annotated_frame = results[0].plot()
+                    # Run YOLOv8
+                    results = self.model(processed_frame, conf=0.5, verbose=False)
+                    if results:
+                        last_results = results[0] # Cache the result
                 
-                # If we skipped inference, we still want to show something.
-                # Ideally, we should overlay the *last known detections* on the *current* frame.
-                # However, since objects move, simple overlay might be misaligned.
-                # For high FPS streams, just showing the last *processed* frame (stuttery video) 
-                # or showing the *current raw* frame (smooth video, low FPS detections) are options.
-                # Option A: Show current raw frame (no boxes) -> Bad UX (flickering boxes)
-                # Option B: Show last annotated frame -> Video looks lower FPS but consistent
-                # Option C: Draw last known boxes on current frame -> Best UX if implemented correctly.
+                # 3. Post-process: Overlay cached results on CURRENT frame
+                final_output = processed_frame # Start with current raw frame
                 
-                # For simplicity and "visual continuity" of the DETECTION result, 
-                # let's stick with Option B (repeating last annotated frame) 
-                # OR return the current frame if we want smooth video but choppy detections.
+                if last_results is not None:
+                    # Draw fresh boxes on the FRESH frame
+                    # plot() usually creates a new image. 
+                    # To save resources, we could manually draw using cv2.rectangle if we parsed boxes.
+                    # But ultralytics plot() is convenient. 
+                    # Note: plot(img=processed_frame) draws on top of provided image
+                    final_output = last_results.plot(img=processed_frame)
                 
-                # Let's go with a hybrid: 
-                # The user asked for optimization. Processing every 3 frames means 30fps input -> 10fps inference.
-                # If we just return 'last_annotated_frame', the video will look like 10fps.
-                # If we want 30fps video with 10fps boxes, we need to save the boxes and draw them on current frame.
+                # 4. Low Latency Encoding
+                # Quality 70 is a good balance for speed/size
+                ret, buffer = cv2.imencode('.jpg', final_output, [cv2.IMWRITE_JPEG_QUALITY, 70])
                 
-                # Given "Optimize", usually means reducing load. 
-                # Let's use the 'last_annotated_frame' if available, otherwise current frame.
-                # But to keep it simple and safe:
-                
-                final_output = last_annotated_frame if last_annotated_frame is not None else frame
-
-                # Success: Encode and store
-                ret, buffer = cv2.imencode('.jpg', final_output)
                 if ret:
                     with self.lock:
                         self.current_frame = buffer.tobytes()
                         self.last_frame_time = time.time()
                 
             except Exception as e:
-                logger.error(f"Error during frame capture: {e}")
+                logger.error(f"Error in capture loop: {e}")
                 if self.cap:
                     self.cap.release()
                 self.cap = None
                 time.sleep(1)
 
-        # Cleanup on exit
         if self.cap:
             self.cap.release()
         logger.info("Capture loop ended.")

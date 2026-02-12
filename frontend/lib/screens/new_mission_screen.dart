@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'live_streaming_screen.dart';
+import '../services/api_service.dart';
 
 class NewMissionScreen extends StatefulWidget {
   const NewMissionScreen({super.key});
@@ -11,6 +12,7 @@ class NewMissionScreen extends StatefulWidget {
 class _NewMissionScreenState extends State<NewMissionScreen> {
   final TextEditingController _missionNameController = TextEditingController();
   final TextEditingController _memoController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -19,16 +21,43 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
     super.dispose();
   }
 
-  void _startMission() {
+  Future<void> _startMission() async {
     if (_missionNameController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('미션 이름을 입력해주세요.')));
       return;
     }
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(builder: (context) => const LiveStreamingScreen()),
-    );
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final mission = await ApiService.createMission(
+        _missionNameController.text,
+        _memoController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(
+          builder: (context) => LiveStreamingScreen(missionId: mission['id']),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('미션 생성 실패: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -310,18 +339,29 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Text(
-                '미션 시작',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(width: 8),
-              Icon(Icons.rocket_launch, size: 20, color: Colors.white),
-            ],
+            children: _isLoading
+                ? const [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ]
+                : const [
+                    Text(
+                      '미션 시작',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.rocket_launch, size: 20, color: Colors.white),
+                  ],
           ),
         ),
       ),

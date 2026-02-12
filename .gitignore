@@ -17,6 +17,4 @@ build/
 .pub/
 
 # AI Models & Data (용량이 커서 따로 관리 권장)
-datasets/
-backend/models/*.pt
-backend/models/*.mlmodel
+datasets/*

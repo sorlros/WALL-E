@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mjpeg/flutter_mjpeg.dart';
+import '../services/api_service.dart';
 
 class LiveStreamingScreen extends StatefulWidget {
-  const LiveStreamingScreen({super.key});
+  final int? missionId;
+  const LiveStreamingScreen({super.key, this.missionId});
 
   @override
   State<LiveStreamingScreen> createState() => _LiveStreamingScreenState();
@@ -69,27 +71,6 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                     width: 1,
                     height: MediaQuery.of(context).size.height * 0.6,
                     color: Colors.white30,
-                  ),
-                ),
-
-                // Simulated Detection Box 1
-                Positioned(
-                  top: MediaQuery.of(context).size.height * 0.35,
-                  left: MediaQuery.of(context).size.width * 0.25,
-                  child: _buildDetectionBox('균열', '98%', Colors.blue, 120, 80),
-                ),
-
-                // Simulated Detection Box 2
-                Positioned(
-                  bottom: MediaQuery.of(context).size.height * 0.40,
-                  right: MediaQuery.of(context).size.width * 0.20,
-                  child: _buildDetectionBox(
-                    '심각',
-                    '92%',
-                    Colors.red,
-                    140,
-                    100,
-                    subtitle: '깊이: 12mm',
                   ),
                 ),
               ],
@@ -413,10 +394,32 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(
-                              context,
-                            ); // Go back to New Mission Screen
+                          onPressed: () async {
+                            if (widget.missionId != null) {
+                              try {
+                                await ApiService.completeMission(
+                                  widget.missionId!,
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('미션이 종료되었습니다.'),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('미션 종료 오류: $e')),
+                                  );
+                                }
+                              }
+                            }
+                            if (context.mounted) {
+                              Navigator.pop(
+                                context,
+                              ); // Go back to New Mission Screen
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red[600],
@@ -426,7 +429,7 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                           ),
                           icon: const Icon(Icons.stop_circle, size: 28),
                           label: const Text(
-                            '송출 중단',
+                            '미션 종료',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -439,103 +442,49 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                 ),
                 const SizedBox(width: 16),
 
-                // Last Captured Thumbnail
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white24),
-                    color: const Color(0xFF101622).withOpacity(0.65),
-                    image: const DecorationImage(
-                      image: NetworkImage(
-                        'https://lh3.googleusercontent.com/aida-public/AB6AXuDJd-GPn8pkweJiWWN39uaKx3m6cToT1CsGQBgAjrcBRHX-krDDMdNpQ3wJIgsz_q0Kterfgw1FBRDQLtXozCPIbgS0jjdkXgOqAcVouToSu6snTv50cYv_g8RMHrHl4GOaINFRtaPbc_UgA8rwD7hDfd4YjiO0gSIEVpHr0ln56HRO_Kl3xMQQb4Q0icFCENGhyly5Fcv9JSOfQMjBgqAO4ctPUFQYoSrMsRvqoiupK5w1SCC_5_2Jh9kBoWOKkEd5l4kKHwIH2UY',
-                      ),
-                      fit: BoxFit.cover,
-                      opacity: 0.8,
-                    ),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.photo_library, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+                // Capture Button
+                GestureDetector(
+                  onTap: () async {
+                    if (widget.missionId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('미션 ID가 없습니다.')),
+                      );
+                      return;
+                    }
+                    try {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(const SnackBar(content: Text('촬영 중...')));
 
-  Widget _buildDetectionBox(
-    String label,
-    String confidence,
-    Color color,
-    double width,
-    double height, {
-    String? subtitle,
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        border: Border.all(color: color, width: 2),
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      // Trigger backend snapshot (We need to implement this API)
+                      // For now, we'll just show a message.
+                      // await ApiService.triggerSnapshot(widget.missionId!);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('저장되었습니다! (기능 구현 필요)')),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
+                    }
+                  },
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: Colors.white, width: 2),
+                      color: Colors.white.withOpacity(0.2),
                     ),
-                  ),
-                ),
-                Text(
-                  confidence,
-                  style: TextStyle(
-                    color: color.withOpacity(0.8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    child: const Center(
+                      child: Icon(Icons.camera_alt, color: Colors.white),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          if (subtitle != null)
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Container(
-                margin: const EdgeInsets.all(4),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  subtitle,
-                  style: const TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              ),
-            ),
         ],
       ),
     );

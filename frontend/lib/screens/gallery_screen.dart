@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import 'mission_detail_screen.dart';
 
 class GalleryScreen extends StatelessWidget {
   const GalleryScreen({super.key});
@@ -57,71 +59,99 @@ class GalleryScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader('미션 알파-04', '10월 24일 • 12개 항목'),
-            const SizedBox(height: 12),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.8,
-              children: [
-                _buildImageCard(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuAaLhCZTbFVnvXCF0QDSudRwb2MhB2HwyIqqYafSLK_IgIwGzB_QTESc-P-_ApBbIm-EMYrR1F1gqulzeI1By2hwHjOVua_N9X0q2xJmPkmC_doAe36X-RhXdLREizK9l8V4MM20ZQmIjThy0Lfrj3TjYUA9Ur5SpQRpg19dsQiD5b_VgTwAjIAux_mfr5Dc2zhl2e25kJ4Krk42cw9B4pFUBpDsj3XqyrekUD3kq34hhWs_DgH113icksqY__S4ZEzVIVRtH7LyK0',
-                  '99% 위험',
-                  Colors.red,
-                  '섹터 4-N',
-                  '#8392',
+      body: FutureBuilder<List<dynamic>>(
+        future: ApiService.getMissions(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Text(
+                '저장된 미션이 없습니다.',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          final missions = snapshot.data!;
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: missions.length,
+            itemBuilder: (context, index) {
+              final mission = missions[index];
+              final detections = mission['detections'] as List ?? [];
+
+              return Card(
+                color: const Color(0xFF1A2332),
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                _buildImageCard(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCyYgNZH7-Lu4jctaizIJeZusaWnDpGYv5o_h6Zhir7qt3XKkbT9NhcvIkThHGayYURfnZLiLc68RdaeAB7Y1hbGGVTSwI47qcTLtd0lTkFLLC3qTWlroQCAAOBuXS2kdW2KEnOQ7LkB9lWhPIJRiF-sUHS8katRlyA5vP8QkQ-NZkQ99B2TeG_I262xq0MgFIeaW6K_3cGy2Ewwbx7jiiW0FHXGtrRFRNU5Uwo1JjbwUXXZEpbuF0jtpOKnuSGBU8liOYbhkrrOEY',
-                  '85% 높음',
-                  Colors.blue,
-                  '섹터 4-E',
-                  '#8395',
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  title: Text(
+                    mission['name'] ?? 'Unnamed Mission',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      Text(
+                        mission['description'] ?? 'No description',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${detections.length} 결함 감지됨',
+                        style: TextStyle(
+                          color: detections.isNotEmpty
+                              ? Colors.orange
+                              : Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        mission['created_at']?.split('T')[0] ?? '',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.grey,
+                    size: 16,
+                  ),
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            MissionDetailScreen(mission: mission),
+                      ),
+                    );
+                    // Force refresh when coming back
+                    (context as Element).markNeedsBuild();
+                  },
                 ),
-                _buildImageCard(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuD3otblfNqsQxyJKWQTCYK_3EyRY27mKL8edIMIqm4LQTWlrPZUkAuLt4_pjU9gycaF-BJjyRUrLX6Tcwi_qdgf30lnW30Pvmyg3bWXoiGtrtF5WOVTUIARsz_y-HFHkQ1uH47Dcs8Ei0NQwS1BRCoOE0Hvx1kFjE5JN-SZeGEL1r7WEDAQRzqCvHjwPrdRXFTnowp3Og8Lbd2LOxGnUBtYWReie3TmS9OWErJyEVSAadbLuuqm-wiZygoHoybBdF2EejISu6-KUIA',
-                  '92% 심각',
-                  Colors.orange,
-                  '옥상 데크',
-                  '#8401',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildSectionHeader('현장 B - 경계 구역', '10월 22일 • 8개 항목'),
-            const SizedBox(height: 12),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.8,
-              children: [
-                _buildImageCard(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuD2yBvnT6eicRE-MD2GDLVebFJAil3LOIEzMszcMZ5qTt-ymandCUKhcR2TMY9lcj8hD_a7FOtH_EXbw9n0Nnym61OMA8hfoW0uODE2WcXLrUGphXMVmPBP90zq3QopS087J-sU8MpmA50wBa7VlC651SLzdVs45WfGD9nypOO6wEzgX5Xu4wGrMQZlDXtm1tHMwrJjXPacipM3oFrQKEEX9vLWO24eUdeNiSYYe8pp5cQk8uCbPnDw5XoFfpfFeQwTyUbnDjZY5X0',
-                  '95% 위험',
-                  Colors.red,
-                  '동쪽 윙',
-                  '#7902',
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF135BEC),
-        onPressed: () {},
-        child: const Icon(Icons.download, color: Colors.white),
+              );
+            },
+          );
+        },
       ),
     );
   }

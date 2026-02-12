@@ -3,6 +3,10 @@ import time
 import os
 import threading
 from dotenv import load_dotenv
+# Database imports
+from backend.db import models, schemas
+from backend.db.database import SessionLocal
+from datetime import datetime
 import logging
 import numpy as np
 from ultralytics import YOLO
@@ -36,6 +40,11 @@ class StreamManager:
         self.lock = threading.Lock()
         self.current_frame = None
         self.last_frame_time = 0
+        
+        # Mission & Detection Logic
+        self.active_mission_id = None
+        self.last_save_time = 0
+        self.save_cooldown = 2.0  # Save detection at most once every 2 seconds
 
     def start(self):
         """Request the capture thread to start."""
@@ -125,6 +134,24 @@ class StreamManager:
                     results = self.model(processed_frame, conf=0.5, verbose=False)
                     if results:
                         last_results = results[0] # Cache the result
+                        
+                        # Auto-Save Logic
+                        # If mission is active and confidence is high, save to DB
+                        if self.active_mission_id:
+                            # Iterate through detections
+                            # YOLO results[0].boxes contains detection data
+                            # We only care if there IS a detection with high confidence
+                            # For simplicity, we take the highest confidence one
+                            boxes = results[0].boxes
+                            if boxes:
+                                best_conf = float(boxes.conf[0]) # Tensor to float
+                                best_cls = int(boxes.cls[0])
+                                label = results[0].names[best_cls]
+                                
+                                current_time = time.time()
+                                if best_conf > 0.6 and (current_time - self.last_save_time > self.save_cooldown):
+                                    self._save_detection(frame, label, best_conf)
+                                    self.last_save_time = current_time
                 
                 # 3. Post-process: Overlay cached results on CURRENT frame
                 final_output = processed_frame # Start with current raw frame
@@ -156,6 +183,44 @@ class StreamManager:
         if self.cap:
             self.cap.release()
         logger.info("Capture loop ended.")
+
+    def _save_detection(self, frame, label, confidence):
+        """Save the detected frame to disk and database."""
+        try:
+            db = SessionLocal()
+            
+            # 1. Create directory based on date
+            today = datetime.now().strftime("%Y-%m-%d")
+            save_dir = os.path.join("backend/storage/images", today)
+            os.makedirs(save_dir, exist_ok=True)
+            
+            # 2. Generate filename
+            import uuid
+            filename = f"{uuid.uuid4()}.jpg"
+            filepath = os.path.join(save_dir, filename)
+            
+            # 3. Save Image (Original, Raw frame for better analysis)
+            cv2.imwrite(filepath, frame)
+            
+            # 4. Save to DB
+            relative_path = os.path.join("storage/images", today, filename)
+            
+            detection = models.Detection(
+                mission_id=self.active_mission_id,
+                image_path=relative_path,
+                label=label,
+                confidence=float(confidence),
+                # GPS will be updated later via API or separate logic
+            )
+            db.add(detection)
+            db.commit()
+            
+            logger.info(f"Auto-saved detection: {label} ({confidence:.2f})")
+            
+        except Exception as e:
+            logger.error(f"Failed to save detection: {e}")
+        finally:
+            db.close()
 
     def get_frame(self):
         """

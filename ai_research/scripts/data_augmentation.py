@@ -25,8 +25,8 @@ def convert_coco_to_yolo(coco_json_path, img_dir, output_dir):
 
     for img_id, img_info in tqdm(images.items(), desc="Processing Original Images"):
         file_name = img_info['file_name']
-        width = img_info['width']
-        height = img_info['height']
+        width = float(img_info['width'])
+        height = float(img_info['height'])
         
         # Copy original image
         src_path = os.path.join(img_dir, file_name)
@@ -45,7 +45,7 @@ def convert_coco_to_yolo(coco_json_path, img_dir, output_dir):
             for ann in annotations:
                 if ann['image_id'] == img_id:
                     cat_id = cat_id_map[ann['category_id']]
-                    bbox = ann['bbox'] # [x, y, w, h]
+                    bbox = [float(x) for x in ann['bbox']] # [x, y, w, h] 명시적 형변환
                     
                     # Normalize to [0, 1]
                     x_center = (bbox[0] + bbox[2] / 2) / width
@@ -59,9 +59,9 @@ def convert_coco_to_yolo(coco_json_path, img_dir, output_dir):
 
 # 1. 현장 맞춤형 (Real-world): 카카오톡 영상/모바일 조건
 real_world_transform = A.Compose([
-    A.ImageCompression(quality_lower=20, quality_upper=50, p=0.5), # 카톡 화질 저하
+    A.ImageCompression(quality_range=(20, 50), p=0.5), # 카톡 화질 저하 (quality_lower/upper -> quality_range)
     A.MotionBlur(blur_limit=7, p=0.4), # 흔들림
-    A.GaussNoise(var_limit=(10.0, 50.0), p=0.3), # 센서 노이즈
+    A.GaussNoise(std_range=(0.04, 0.2), p=0.3), # 센서 노이즈 (10/255 ~ 50/255 범위로 정규화)
     A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5), # 조명 변화
     A.SafeRotate(limit=15, p=0.3), # 미세 회전
 ], bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
@@ -71,7 +71,7 @@ recommended_transform = A.Compose([
     A.Sharpen(alpha=(0.2, 0.5), lightness=(0.5, 1.0), p=0.5), # 균열 선명도 강화
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
-    A.RandomResizedCrop(height=640, width=640, scale=(0.8, 1.0), p=0.4), # 스케일 변화
+    A.RandomResizedCrop(size=(640, 640), scale=(0.8, 1.0), p=0.4), # 스케일 변화 (height/width -> size)
     A.CLAHE(clip_limit=4.0, p=0.4), # 로컬 대비 강화
 ], bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
 
@@ -90,8 +90,17 @@ def apply_augmentation(img_dir, lbl_dir, output_dir, transform, suffix):
         if not os.path.exists(lbl_path):
             continue
 
-        image = cv2.imread(img_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # cv2.imread 대신 np.fromfile을 사용하여 한글 경로 지원
+        try:
+            img_array = np.fromfile(img_path, np.uint8)
+            image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+            if image is None:
+                print(f"Warning: Failed to load image {img_file}")
+                continue
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        except Exception as e:
+            print(f"Error loading {img_file}: {e}")
+            continue
         
         bboxes = []
         class_labels = []
@@ -108,7 +117,12 @@ def apply_augmentation(img_dir, lbl_dir, output_dir, transform, suffix):
             
             # Save augmented image
             new_img_name = f"{os.path.splitext(img_file)[0]}_{suffix}.jpg"
-            cv2.imwrite(os.path.join(img_output, new_img_name), cv2.cvtColor(aug_image, cv2.COLOR_RGB2BGR))
+            save_path = os.path.join(img_output, new_img_name)
+            
+            # cv2.imwrite 대신 imencode를 사용하여 한글 경로 지원
+            res, img_encoded = cv2.imencode(".jpg", cv2.cvtColor(aug_image, cv2.COLOR_RGB2BGR))
+            if res:
+                img_encoded.tofile(save_path)
             
             # Save augmented labels
             new_lbl_name = f"{os.path.splitext(img_file)[0]}_{suffix}.txt"
@@ -124,13 +138,14 @@ if __name__ == "__main__":
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     AI_RESEARCH_DIR = os.path.dirname(SCRIPT_DIR)
     
-    # 입력 데이터 경로: ai_research/merged_dataset/merged_dataset
-    INPUT_DIR = os.path.join(AI_RESEARCH_DIR, "merged_dataset", "merged_dataset")
+    # 입력 데이터 경로: ai_research/datasets/merged_dataset/merged_dataset
+    # 사용자가 merged_dataset의 상위 폴더(datasets)를 만들었다고 함
+    INPUT_DIR = os.path.join(AI_RESEARCH_DIR, "datasets", "merged_dataset", "merged_dataset")
     COCO_JSON = os.path.join(INPUT_DIR, "_annotations.coco.json")
     ORIG_IMG_DIR = INPUT_DIR
     
-    # 출력 데이터 경로: ai_research/crack_yolo (ai_research 폴더 내부로 제한)
-    YOLO_DIR = os.path.join(AI_RESEARCH_DIR, "crack_yolo") 
+    # 출력 데이터 경로: ai_research/datasets/crack_yolo (datasets 폴더 내부로 저장)
+    YOLO_DIR = os.path.join(AI_RESEARCH_DIR, "datasets", "crack_yolo") 
     
     print(f"Step 1: COCO to YOLO Conversion...")
     print(f"Input JSON: {COCO_JSON}")
@@ -138,14 +153,19 @@ if __name__ == "__main__":
     
     if not os.path.exists(COCO_JSON):
         print(f"Error: {COCO_JSON} 파일을 찾을 수 없습니다.")
+        # 디버깅을 위해 현재 디렉토리 구조 출력
+        print(f"Current Directory Structure Check:")
+        if os.path.exists(os.path.join(AI_RESEARCH_DIR, "datasets")):
+            print(f"Found datasets folder: {os.listdir(os.path.join(AI_RESEARCH_DIR, 'datasets'))}")
     else:
         img_orig, lbl_orig = convert_coco_to_yolo(COCO_JSON, ORIG_IMG_DIR, YOLO_DIR)
         
-        print("/nStep 2: Applying Real-world Augmentation...")
+        print("\nStep 2: Applying Real-world Augmentation...")
         apply_augmentation(img_orig, lbl_orig, YOLO_DIR, real_world_transform, "real")
         
-        print("/nStep 3: Applying Recommended Augmentation...")
+        print("\nStep 3: Applying Recommended Augmentation...")
         apply_augmentation(img_orig, lbl_orig, YOLO_DIR, recommended_transform, "rec")
 
-        print(f"/nAll steps completed! Dataset is ready in: {YOLO_DIR}")
-        print(f"Total images: {len(os.listdir(os.path.join(YOLO_DIR, 'images')))}")
+        print(f"\nAll steps completed! Dataset is ready in: {YOLO_DIR}")
+        if os.path.exists(os.path.join(YOLO_DIR, 'images')):
+            print(f"Total images: {len(os.listdir(os.path.join(YOLO_DIR, 'images')))}")

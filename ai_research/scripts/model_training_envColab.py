@@ -11,9 +11,9 @@ model = YOLO("yolo11n.pt")
 
 result = model.train(
     data='/content/datasets/data.yaml',
-    epochs=10,
+    epochs=100,
     imgsz=640,
-    batch=30,
+    batch=32,
     name='augmentation_result',
     device='0',
 

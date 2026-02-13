@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # 스크립트 위치 기준으로 경로 설정
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     AI_RESEARCH_DIR = os.path.dirname(SCRIPT_DIR)
-    DATASET_DIR = os.path.join(AI_RESEARCH_DIR, "datasets", "crack_yolo")
+    DATASET_DIR = os.path.join(AI_RESEARCH_DIR, "datasets", "yolo_dataset")
 
     if os.path.exists(DATASET_DIR):
         print(f"Normalizing labels in: {DATASET_DIR}")

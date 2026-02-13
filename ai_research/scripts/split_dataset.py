@@ -60,7 +60,7 @@ def split_dataset(input_dir, output_dir, train_ratio=0.8, val_ratio=0.2):
 
     # data.yaml 생성
     yaml_data = {
-        'path': os.path.abspath(output_dir),
+        'path': os.path.abspath(output_dir).replace('\\', '/'),
         'train': 'train/images',
         'val': 'val/images',
         # 'test': 'test/images', # Test는 미사용

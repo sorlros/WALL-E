@@ -12,12 +12,13 @@ from ultralytics import YOLO
 model = YOLO("yolo11n.pt")
 
 result = model.train(
-    data='C:/Users/User/Desktop/Intel_AI_education/CV_Project/WallE/ai_research/datasets/final_split_dataset/data.yaml',
-    epochs=50,
+    data='/content/final_split_dataset/data.yaml',
+    epochs=100,
     imgsz=640,
-    batch=8,
+    batch=32,
     name='augmentation_result',
-    device='CPU',
+    device='0',
+    patience=15,
 
     # ========= [데이터 증강 끄기 설정] ========= #
     hsv_h=0.0,                  # 색조 변경 끄기

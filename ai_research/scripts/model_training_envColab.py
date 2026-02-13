@@ -12,12 +12,12 @@ from ultralytics import YOLO
 model = YOLO("yolo11n.pt")
 
 result = model.train(
-    data='/content/datasets/data.yaml',
-    epochs=100,
+    data='C:/Users/User/Desktop/Intel_AI_education/CV_Project/WallE/ai_research/datasets/final_split_dataset/data.yaml',
+    epochs=50,
     imgsz=640,
-    batch=32,
+    batch=8,
     name='augmentation_result',
-    device='0',
+    device='CPU',
 
     # ========= [데이터 증강 끄기 설정] ========= #
     hsv_h=0.0,                  # 색조 변경 끄기
@@ -35,9 +35,9 @@ result = model.train(
     copy_paste=0.0,             # 복사 붙여넣기 끄기
     auto_augment=None,          # 자동 증강(RandAugment 등) 끄기
     erasing=0.0,                # 랜덤 지우기 끄기
-    blur=0.0,                   # 블러 끄기
-    median=0.0,                 # 미디언 필터 끄기
-    clahe=0.0,                  # CLAHE 끄기
+    # blur=0.0,                   # 블러 끄기
+    # median=0.0,                 # 미디언 필터 끄기
+    # clahe=0.0,                  # CLAHE 끄기
     crop_fraction=1.0,          # 이미지 크롭 비율 (1.0 = 크롭 없음)
     bgr=0.0,                    # 채널 순서 섞기 끄기
     rect=False,                 # 사각형 학습(Rectangular training) 끄기

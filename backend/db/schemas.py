@@ -1,13 +1,16 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, ConfigDict
+from typing import List, Optional, Any
 from datetime import datetime
+import uuid
 
+# Base Schemas
 class DetectionBase(BaseModel):
     label: str
     confidence: float
+    image_url: str
+    bbox: Optional[List[Any]] = None # [x, y, w, h]
     gps_lat: Optional[float] = None
     gps_lng: Optional[float] = None
-    address: Optional[str] = None
 
 class DetectionCreate(DetectionBase):
     pass
@@ -15,25 +18,25 @@ class DetectionCreate(DetectionBase):
 class Detection(DetectionBase):
     id: int
     mission_id: int
-    image_path: str
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class MissionBase(BaseModel):
-    name: str
+    title: str
     description: Optional[str] = None
+    location_name: Optional[str] = None
+    location_address: Optional[str] = None
 
 class MissionCreate(MissionBase):
     pass
 
 class Mission(MissionBase):
     id: int
-    user_id: Optional[int] = None # For now optional until auth is fully integrated
-    status: str
+    user_id: Optional[uuid.UUID] = None
+    captured_at: Optional[datetime] = None
     created_at: datetime
+    
     detections: List[Detection] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

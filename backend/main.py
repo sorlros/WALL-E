@@ -1,17 +1,18 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from backend.api import stream, missions
+from api import stream, missions, auth
 import os
 
 # Create storage directory if it doesn't exist
-os.makedirs("backend/storage", exist_ok=True)
+os.makedirs("storage", exist_ok=True)
 
 app = FastAPI(title="Wall-E Backend", version="0.1.0")
 
 # Mount Static Files
-app.mount("/storage", StaticFiles(directory="backend/storage"), name="storage")
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
 # Include routers
+app.include_router(auth.router)
 app.include_router(stream.router, prefix="/stream", tags=["stream"])
 app.include_router(missions.router)
 
@@ -28,4 +29,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     print("Shutting down Wall-E backend...")
-    # Clean up resources if needed
+    # Clean up resources
+    if stream.stream_manager:
+        stream.stream_manager.release()

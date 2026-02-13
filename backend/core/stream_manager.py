@@ -4,8 +4,8 @@ import os
 import threading
 from dotenv import load_dotenv
 # Database imports
-from backend.db import models, schemas
-from backend.db.database import SessionLocal
+from db import models, schemas
+from db.database import SessionLocal
 from datetime import datetime
 import logging
 import numpy as np
@@ -27,7 +27,6 @@ class StreamManager:
             self.rtmp_url = int(self.rtmp_url)
         
         # Initialize YOLO model
-        # Using 'yolo11n.pt' (nano) as requested.
         logger.info("Loading YOLO11n model...")
         self.model = YOLO("yolo11n.pt")
         logger.info("YOLO11n model loaded.")
@@ -91,7 +90,6 @@ class StreamManager:
         frame_count = 0
         
         # Cache for the last detection results (bounding boxes)
-        # Assuming YOLO results object or just list of boxes
         last_results = None 
         
         while self.is_running:
@@ -138,19 +136,19 @@ class StreamManager:
                         # Auto-Save Logic
                         # If mission is active and confidence is high, save to DB
                         if self.active_mission_id:
-                            # Iterate through detections
-                            # YOLO results[0].boxes contains detection data
-                            # We only care if there IS a detection with high confidence
-                            # For simplicity, we take the highest confidence one
                             boxes = results[0].boxes
                             if boxes:
                                 best_conf = float(boxes.conf[0]) # Tensor to float
                                 best_cls = int(boxes.cls[0])
                                 label = results[0].names[best_cls]
                                 
+                                # Get Bounding Box [x, y, w, h] (normalized) for DB
+                                # xywhn = Center X, Center Y, Width, Height (Normalized)
+                                bbox_norm = boxes.xywhn[0].tolist() # [x, y, w, h]
+                                
                                 current_time = time.time()
                                 if best_conf > 0.6 and (current_time - self.last_save_time > self.save_cooldown):
-                                    self._save_detection(frame, label, best_conf)
+                                    self._save_detection(frame, label, best_conf, bbox_norm)
                                     self.last_save_time = current_time
                 
                 # 3. Post-process: Overlay cached results on CURRENT frame
@@ -158,10 +156,6 @@ class StreamManager:
                 
                 if last_results is not None:
                     # Draw fresh boxes on the FRESH frame
-                    # plot() usually creates a new image. 
-                    # To save resources, we could manually draw using cv2.rectangle if we parsed boxes.
-                    # But ultralytics plot() is convenient. 
-                    # Note: plot(img=processed_frame) draws on top of provided image
                     final_output = last_results.plot(img=processed_frame)
                 
                 # 4. Low Latency Encoding
@@ -184,14 +178,15 @@ class StreamManager:
             self.cap.release()
         logger.info("Capture loop ended.")
 
-    def _save_detection(self, frame, label, confidence):
+    def _save_detection(self, frame, label, confidence, bbox):
         """Save the detected frame to disk and database."""
         try:
             db = SessionLocal()
             
-            # 1. Create directory based on date
+            # 1. Create directory based on date (Local Cache / Fallback)
+            # Ideally this uploads to Supabase Storage directly.
             today = datetime.now().strftime("%Y-%m-%d")
-            save_dir = os.path.join("backend/storage/images", today)
+            save_dir = os.path.join("storage/images", today)
             os.makedirs(save_dir, exist_ok=True)
             
             # 2. Generate filename
@@ -203,13 +198,15 @@ class StreamManager:
             cv2.imwrite(filepath, frame)
             
             # 4. Save to DB
-            relative_path = os.path.join("storage/images", today, filename)
+            # Use public URL format for Supabase Storage
+            image_url = f"/storage/images/{today}/{filename}"
             
             detection = models.Detection(
                 mission_id=self.active_mission_id,
-                image_path=relative_path,
+                image_url=image_url,
                 label=label,
                 confidence=float(confidence),
+                bbox=bbox, 
                 # GPS will be updated later via API or separate logic
             )
             db.add(detection)
@@ -244,12 +241,8 @@ class StreamManager:
             if frame_bytes:
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                # Wait slightly less than frame duration (e.g. for 30fps ~0.033)
-                # But to ensure low latency, we yield as fast as possible if new frame?
-                # For simplicity, sleep small amount to avoid busy loop
                 time.sleep(0.01) 
             else:
-                # If no frame, sleep longer to wait for connection
                 time.sleep(0.1)
 
     def release(self):

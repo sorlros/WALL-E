@@ -20,3 +20,14 @@ build/
 datasets/
 backend/models/*.pt
 backend/models/*.mlmodel
+
+# Docs
+walkthrough/*
+
+# Images
+ai_research/augmentation_experiments/outputs/
+
+# Videos
+ai_research/test_data
+
+

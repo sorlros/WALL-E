@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/new_mission_screen.dart';
 import 'screens/gallery_screen.dart';
-import 'screens/live_streaming_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() {
   runApp(const WallEApp());
@@ -20,7 +21,7 @@ class WallEApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF101622),
         fontFamily: 'Noto Sans KR',
       ),
-      home: const MainNavigator(),
+      home: const LoginScreen(), // Set directly to LoginScreen
     );
   }
 }
@@ -33,12 +34,12 @@ class MainNavigator extends StatefulWidget {
 }
 
 class _MainNavigatorState extends State<MainNavigator> {
-  int _currentIndex = 1; // Start with New Mission (Middle Tab)
+  int _currentIndex = 0; // Start with New Mission (First Tab)
 
   final List<Widget> _screens = [
-    const LiveStreamingScreen(), // Index 0: Live Stream
-    const NewMissionScreen(), // Index 1: Home / New Mission
-    const GalleryScreen(), // Index 2: Gallery
+    const NewMissionScreen(), // Index 0: New Mission (was 1)
+    const GalleryScreen(), // Index 1: Gallery (was 2)
+    const ProfileScreen(), // Index 2: Profile
   ];
 
   @override
@@ -57,16 +58,13 @@ class _MainNavigatorState extends State<MainNavigator> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.videocam),
-            label: '실시간 영상',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.add_circle_outline),
             label: '새 미션',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: '라이브러리'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view),
-            label: '라이브러리', // Gallery
+            icon: Icon(Icons.person_outline),
+            label: '프로필',
           ),
         ],
       ),

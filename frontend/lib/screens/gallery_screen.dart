@@ -72,10 +72,44 @@ class GalleryScreen extends StatelessWidget {
               ),
             );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                '저장된 미션이 없습니다.',
-                style: TextStyle(color: Colors.white),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A2332),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: const Icon(
+                      Icons.folder_off_outlined,
+                      size: 48,
+                      color: Colors.white24,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    '저장된 미션이 없습니다',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '새로운 미션을 시작하여\n건물 외벽 균열을 점검해보세요.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -86,7 +120,7 @@ class GalleryScreen extends StatelessWidget {
             itemCount: missions.length,
             itemBuilder: (context, index) {
               final mission = missions[index];
-              final detections = mission['detections'] as List ?? [];
+              final detections = (mission['detections'] as List?) ?? [];
 
               return Card(
                 color: const Color(0xFF1A2332),
@@ -96,6 +130,29 @@ class GalleryScreen extends StatelessWidget {
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
+                  leading: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                      image:
+                          (detections.isNotEmpty &&
+                              detections.last['image_url'] != null)
+                          ? DecorationImage(
+                              image: NetworkImage(
+                                '${ApiService.baseUrl}${detections.last['image_url']}',
+                              ),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child:
+                        (detections.isEmpty ||
+                            detections.last['image_url'] == null)
+                        ? const Icon(Icons.broken_image, color: Colors.white24)
+                        : null,
+                  ),
                   title: Text(
                     mission['name'] ?? 'Unnamed Mission',
                     style: const TextStyle(

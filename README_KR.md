@@ -9,136 +9,117 @@
 
 ## 👥 팀 구조 및 역할
 
-우리는 4명의 팀원으로 구성된 다기능 팀(Cross-functional team)으로 운영되며, 애자일 개발과 고품질 결과물 산출을 위해 명확한 역할 분담을 따릅니다.
+우리는 아래와 같이 역할을 분담하여 프로젝트를 진행합니다.
+
+👉 **[프로젝트 칸반 보드 확인하기 (GitHub Projects)](https://github.com/orgs/WallEproject/projects/1/views/1)**
 
 | 역할 | 책임 (Responsibilities) | 주요 집중 분야 (Key Focus Areas) |
 |------|------------------|-----------------|
-| **Project Manager (PM)** | 제품 비전, 일정 관리, 요구사항 정의 | 사용자 스토리, 스프린트 계획, 문서화, 이해관계자 소통 |
-| **Backend Developer** | 서버 아키텍처, API 설계, 데이터베이스 관리 | FastAPI/Django, REST/GraphQL 설계, 데이터 무결성, 클라우드 배포 |
-| **AI Model Developer** | 모델 학습 (YOLO), 최적화, 추론 로직 | 데이터셋 전처리, 모델 정확도(mAP), 실시간 처리 속도 |
-| **UI/UX Developer** | 모바일 앱 개발, 사용자 인터페이스 디자인 | Flutter 구현, 사용자 경험 흐름, 반응형 디자인, 상태 관리 |
+| **Project Manager (PM)** | 제품 비전, 일정 관리, 문서화 | 사용자 스토리, 스프린트 계획, 기획서 작성 |
+| **Backend Developer** | 서버 아키텍처, API, DB 설계 | FastAPI, Supabase(PostgreSQL), REST API, 데이터 무결성 |
+| **AI Model Developer** | 모델 학습 (YOLO), 최적화 | 데이터셋 증강(Albumentations), 모델 정확도(mAP), 실시간 추론 최적화 |
+| **Frontend Developer** | 모바일 앱 개발 (Flutter) | 실시간 스트리밍 뷰, 갤러리 UI, 상태 관리, 반응형 디자인 |
 
 ---
 
-## 🛠 기술 스택 및 버전 표준
+## 📅 프로젝트 상세 계획 (Project Plan)
 
-로컬 환경 및 CI/CD 파이프라인의 일관성을 위해 모든 팀원은 다음 버전 표준을 **반드시** 준수해야 합니다.
+### 1. 🧠 AI & Computer Vision Part
+드론 영상에서 실시간으로 균열(Crack)을 탐지하는 핵심 엔진입니다.
 
-### 핵심 환경 (Core Environment)
-- **Python:** `3.10.12` (AI/Backend 일관성 유지 필수)
-- **Java (JDK):** `17` (LTS - Android 빌드 및 백엔드 호환성 필수)
-- **Node.js:** `LTS (v20.x)` (툴링에 필요시)
+*   **모델 선정**: YOLOv11n (Nano) - 모바일/엣지 디바이스에서의 실시간 추론 속도 최적화.
+*   **데이터셋 구축**:
+    *   **소스**: AI Hub 등 공개된 콘크리트 균열 데이터셋.
+    *   **병합 (Merge)**: 여러 소스의 COCO 포맷 데이터를 `merged_dataset`으로 통합.
+    *   **증강 (Augmentation)**: `Albumentations`를 활용하여 드론 환경 모사 (Motion Blur, Noise, Brightness 변화).
+*   **학습 전략**:
+    *   초기에는 기본 증강(Mosaic 등)을 끄고, 우리가 만든 "드론 맞춤형 증강 데이터"로만 학습하여 도메인 적응력 강화.
+    *   검증(Validation) 지표: mAP50, Recall 중점 관리.
 
-### 모바일 앱 (Frontend)
-- **Framework:** **Flutter 3.19.x**
-- **Dart:** `3.3.x`
-- **Minimum Target SDK:** Android API 26 / iOS 12.0
+### 2. ⚙️ Backend & Architecture Part
+데이터 흐름과 비즈니스 로직을 담당하는 중앙 서버입니다.
 
-### AI & 컴퓨터 비전 (AI & Computer Vision)
-- **Library:** **OpenCV 4.9.0** (서버용 Headless, 로컬 디버그용 Full)
-- **Model:** **YOLOv8** (`ultralytics` 패키지 8.1.x)
-- **CUDA:** `11.8` 혹은 `12.1` (PyTorch 버전 호환성 확인)
+*   **Framework**: FastAPI (Python) - 비동기 처리 및 고성능 API.
+*   **Database**: **Supabase (PostgreSQL)**
+    *   **Missions**: 비행 세션 관리 (장소명, 주소, 시간).
+    *   **Detections**: 탐지된 크랙 정보 (이미지 URL, 신뢰도, **BBox JSON**, **GPS 좌표**).
+    *   **Users**: Supabase Auth 연동.
+*   **Storage**: Supabase Storage - 고해상도 원본 크랙 이미지 저장.
+*   **Streaming**:
+    *   **MediaMTX**: RTMP 프로토콜로 드론 영상 수신.
+    *   **StreamManager**: OpenCV로 프레임을 읽어 AI 추론 후, 결과가 오버레이된 영상을 앱으로 송출 (MJPEG/HLS).
 
-### 백엔드 & 프로토콜 (Backend & Protocol)
-- **Communication:** RTSP/RTMP (실시간 비디오 스트리밍)
-- **API Style:** RESTful API (JSON)
-- **Database:** PostgreSQL (v15) / Redis (캐싱)
+### 3. 📱 Frontend (App) Part
+사용자가 드론을 조작하고 점검 결과를 확인하는 인터페이스입니다.
 
----
+*   **Framework**: Flutter (Dart) - Android/iOS 크로스 플랫폼.
+*   **주요 기능**:
+    *   **실시간 관제**: 드론 시점의 영상을 실시간으로 확인. 크랙 탐지 시 화면에 박스 표시.
+    *   **미션 기록**: 비행 시작/종료 제어, 현장 위치 정보(건물명) 입력.
+    *   **갤러리**: 탐지된 크랙 이미지 리스트 확인, 상세 보기 (바운딩 박스 On/Off).
+    *   **지도 연동 (예정)**: 탐지된 위치를 지도 위에 마커로 표시.
 
-## 🌊 워크플로우 및 컨벤션
+### 4. 🗂 Data Pipeline Part
+데이터의 수집부터 가공, 저장까지의 흐름입니다.
 
-### 프로젝트 관리 (Project Management)
-[프로젝트 보드 바로가기](https://github.com/orgs/WallEproject/projects/1/views/1)
-
-### Git Flow
-우리는 코드베이스를 효과적으로 관리하기 위해 **Git Flow** 전략을 따릅니다.
-- `main`: 배포 가능한 프로덕션 코드. 보호된 브랜치(Protected branch).
-- `develop`: 기능 통합 브랜치.
-- `feature/*`: 기능별 개발 브랜치 (예: `feature/login-screen`, `feature/yolo-model-training`).
-
-### 🌿 Branch Strategy
-
-모든 팀원은 아래의 브랜치 네이밍 규칙을 준수하여 작업합니다.
-
-| 구분 | 브랜치 이름 예시 (Prefix/Topic) | 주요 작업 내용 |
-| :--- | :--- | :--- |
-| **PM (Docs/Env)** | `docs/prd-update`, `env/set-gitignore` | 문서화, 공통 환경 설정 관리 |
-| **AI 개발자** | `feature/ai-yolo-v8-train`, `feature/ai-mask-overlay` | 모델 학습, 결과 시각화 로직 |
-| **백엔드/드론** | `feature/drone-rtsp-stream`, `fix/drone-connection-lag` | 드론 영상 수신, 통신 버그 수정 |
-| **프론트 (App)** | `feature/app-main-ui`, `feature/app-video-widget` | 앱 레이아웃, 영상 출력 화면 |
-
-**※ 주의:** 모든 기능 개발은 `develop` 브랜치에서 파생(Checkout)하며, 완료 후 `develop`으로 PR을 보냅니다.
-
-### Commit Message Convention
-[Conventional Commits](https://www.conventionalcommits.org/) 사양을 따라주세요:
-- `add`: 새로운 기능 추가
-- `delete`: 기존 코드 삭제
-- `fix`: 버그 수정
-- `update`: 기존 코드 업데이트
-- `docs`: 문서 변경
-- `style`: 코드 의미에 영향을 주지 않는 변경 (공백, 포맷팅 등)
-- `refactor`: 버그 수정이나 기능 추가가 아닌 코드 변경
-
+1.  **수집 (Collection)**: 드론 카메라 → RTMP → Backend Server.
+2.  **처리 (Processing)**:
+    *   `StreamManager`가 프레임 캡처.
+    *   YOLOv11 모델이 크랙 탐지 (Confidence > 0.6).
+3.  **저장 (Storage)**:
+    *   이미지: 원본 프레임을 스토리지에 업로드.
+    *   메타데이터: BBox 좌표(x,y,w,h 정규화값), GPS, 라벨 등을 DB에 Insert.
+4.  **시각화 (Visualization)**: 앱에서 원본 이미지 위에 BBox 좌표를 기반으로 박스를 그려서 사용자가 확인.
 
 ---
 
-## 🚀 시작하기 (Getting Started)
+## 🛠 기술 스택 (Tech Stack)
 
-### 1. 사전 요구사항 (Prerequisites)
-Python, Java, Flutter의 필수 버전이 설치되어 있는지 확인해주세요.
+### Core
+*   **Language**: Python 3.10+, Dart 3.3+
+*   **AI**: YOLOv11 (`ultralytics`), OpenCV, Albumentations
+*   **Backend**: FastAPI, SQLAlchemy, PostgreSQL (`psycopg2`)
+*   **Frontend**: Flutter 3.19+
 
-### 2. 저장소 복제 (Clone Repository)
-```bash
-git clone https://github.com/WallEproject/WallE.git
-cd WallE
-```
+### Infrastructure
+*   **DB/Auth/Storage**: Supabase (Cloud)
+*   **Streaming Server**: MediaMTX (RTMP/RTSP)
 
-### 3. 자동 설정 (Recommended)
+---
 
-#### Mac / Linux
-```bash
-chmod +x setup.sh
-./setup.sh
-```
+## 🌊 시작하기 (Getting Started)
 
-#### Windows
-Please run the `setup.bat` script by double-clicking it or via Command Prompt:
-```cmd
-setup.bat
-```
-*(Windows users will need to download MediaMTX manually as guided by the script)*
-
-### 4. 수동 설정 (Manual Setup)
-만약 자동 설정이 실패하거나 수동으로 설정하려면:
-
-**1) RTMP 서버 설치 (Mac)**
-```bash
-brew install mediamtx
-brew services start mediamtx
-```
-
-**2) Python 백엔드 설정**
+### 1. 환경 설정
+#### Backend
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 5. 서버 실행 (Run Server)
+#### Database (Supabase)
+`.env` 파일에 Supabase 접속 정보를 설정해야 합니다.
+```env
+DATABASE_URL=postgresql://user:pass@host:5432/postgres
+RTMP_URL=rtmp://localhost:1935/live/test
+```
 
-#### Mac / Linux
+### 2. 실행
+#### RTMP 서버 (MediaMTX)
 ```bash
-# 1. 가상환경 활성화 (프로젝트 루트에서)
-source backend/.venv/bin/activate
+brew services start mediamtx   # Mac
+# 또는 실행 파일 직접 실행
+```
 
-# 2. 서버 실행
+#### Backend 서버
+```bash
 uvicorn backend.main:app --reload
 ```
 
-#### Windows
-```cmd
-backend\.venv\Scripts\activate
-uvicorn backend.main:app --reload
+#### Frontend 앱
+```bash
+cd frontend
+flutter pub get
+flutter run
 ```

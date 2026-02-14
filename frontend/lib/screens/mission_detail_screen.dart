@@ -109,9 +109,8 @@ class MissionDetailScreen extends StatelessWidget {
     Map<String, dynamic> detection,
   ) {
     // Construct full image URL
-    // image_path is relative: "storage/images/2024-xx-xx/uuid.jpg"
-    // We mounted "/storage" in FastAPI.
-    final imageUrl = '${ApiService.baseUrl}/${detection['image_path']}';
+    // image_url is like: "/storage/images/2024-xx-xx/uuid.jpg"
+    final imageUrl = '${ApiService.baseUrl}${detection['image_url']}';
 
     return GestureDetector(
       onTap: () {

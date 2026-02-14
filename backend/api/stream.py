@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from backend.core.stream_manager import stream_manager
+from core.stream_manager import stream_manager
 
 router = APIRouter()
 

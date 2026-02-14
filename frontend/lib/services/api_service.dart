@@ -6,7 +6,65 @@ import 'package:http_parser/http_parser.dart';
 class ApiService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS simulator/web
   // For physical device, use actual IP
-  static const String baseUrl = 'http://172.30.1.52:8000';
+  static const String baseUrl = 'http://10.0.2.2:8000';
+
+  // 사용자 정보 저장
+  static Map<String, dynamic>? _currentUser;
+  static String? _accessToken;
+  static String? _refreshToken;
+
+  static Map<String, dynamic>? get currentUser => _currentUser;
+  static String? get accessToken => _accessToken;
+  static bool get isLoggedIn => _currentUser != null;
+
+  // LOGIN
+  static Future<Map<String, dynamic>> login(
+    String email,
+    String password,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      // 사용자 정보 저장
+      _accessToken = data['access_token'];
+      _refreshToken = data['refresh_token'];
+      _currentUser = data['user'];
+      return data;
+    } else {
+      throw Exception('Login failed: ${response.body}');
+    }
+  }
+
+  // LOGOUT
+  static void logout() {
+    _currentUser = null;
+    _accessToken = null;
+    _refreshToken = null;
+  }
+
+  // SIGNUP
+  static Future<Map<String, dynamic>> signup(
+    String email,
+    String password,
+    String name,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/signup'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password, 'name': name}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Signup failed: ${response.body}');
+    }
+  }
 
   // Create a new mission
   static Future<Map<String, dynamic>> createMission(

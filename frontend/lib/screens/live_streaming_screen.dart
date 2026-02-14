@@ -441,47 +441,6 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-
-                // Capture Button
-                GestureDetector(
-                  onTap: () async {
-                    if (widget.missionId == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('미션 ID가 없습니다.')),
-                      );
-                      return;
-                    }
-                    try {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(const SnackBar(content: Text('촬영 중...')));
-
-                      // Trigger backend snapshot (We need to implement this API)
-                      // For now, we'll just show a message.
-                      // await ApiService.triggerSnapshot(widget.missionId!);
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('저장되었습니다! (기능 구현 필요)')),
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
-                    }
-                  },
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.white, width: 2),
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.camera_alt, color: Colors.white),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

@@ -9,39 +9,38 @@
 
 from ultralytics import YOLO
 
-model = YOLO("yolo11n.pt")
+model = YOLO('yolo11s.pt') # mAP 0.5+를 위한 시력 상향
 
 result = model.train(
-    data='/content/final_split_dataset/data.yaml',
-    epochs=100,
+    data='/content/refined_dataset/data.yaml',
+    epochs=200,        # SGD 수렴을 위해 넉넉하게 설정
     imgsz=640,
-    batch=32,
-    name='augmentation_result',
-    device='0',
-    patience=15,
+    batch=16,          # Small 모델 체급 고려하여 조정
+    patience=100,      # 조기 종료 방지
 
-    # ========= [데이터 증강 끄기 설정] ========= #
-    hsv_h=0.0,                  # 색조 변경 끄기
-    hsv_s=0.0,                  # 채도 변경 끄기
-    hsv_v=0.0,                  # 명도 변경 끄기
-    degrees=0.0,                # 회전 끄기
-    translate=0.0,              # 이동 끄기
-    scale=0.0,                  # 스케일 변경 끄기
-    shear=0.0,                  # 전단 변환 끄기
-    perspective=0.0,            # 원근 변환 끄기
-    flipud=0.0,                 # 상하 반전 끄기
-    fliplr=0.0,                 # 좌우 반전 끄기
-    mosaic=0.0,                 # 모자이크(4장 합치기) 끄기 (★중요)
-    mixup=0.0,                  # 믹스업 끄기
-    copy_paste=0.0,             # 복사 붙여넣기 끄기
-    auto_augment=None,          # 자동 증강(RandAugment 등) 끄기
-    erasing=0.0,                # 랜덤 지우기 끄기
-    # blur=0.0,                   # 블러 끄기
-    # median=0.0,                 # 미디언 필터 끄기
-    # clahe=0.0,                  # CLAHE 끄기
-    crop_fraction=1.0,          # 이미지 크롭 비율 (1.0 = 크롭 없음)
-    bgr=0.0,                    # 채널 순서 섞기 끄기
-    rect=False,                 # 사각형 학습(Rectangular training) 끄기
+    # ========= [V12 학습 최적화: SGD Stability] ========= #
+    optimizer='SGD',
+    lr0=0.01,
+    momentum=0.937,
+    weight_decay=0.0005,
+    cos_lr=True,
+
+    # ========= [V12 증강 전략: "Back to Basics"] ========= #
+    # 1024px 오프라인 증강 데이터의 품질을 보존하기 위해 실시간 노이즈 최소화
+    mosaic=0.0,        
+    mixup=0.0,         
+    fliplr=0.5,        
+    flipud=0.0,
+    degrees=0.0,
+    translate=0.0,     # Offline Crop이 이미 수행
+    scale=0.0,         # Offline Crop이 이미 수행
+    shear=0.0,
+    perspective=0.0,
+    
+    # 색상 변환 (미세 조정)
+    hsv_h=0.01,
+    hsv_s=0.5,
+    hsv_v=0.3,
 )
 
 print('============================학습 종료============================')
@@ -52,3 +51,7 @@ metrics = model.val() # 이전에 학습한 best.pt를 자동으로 사용하여
 print(f"Validation mAP50-95: {metrics.box.map}")
 print(f"Validation mAP50: {metrics.box.map50}")
 print('============================검증 종료============================')
+
+from google.colab import runtime
+print('학습이 완료되었습니다. 런타임을 종료합니다.')
+runtime.unassign()

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_mjpeg/flutter_mjpeg.dart';
+import 'package:video_player/video_player.dart';
 import '../services/api_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dart:convert';
 
 class LiveStreamingScreen extends StatefulWidget {
   final int? missionId;
@@ -11,8 +15,94 @@ class LiveStreamingScreen extends StatefulWidget {
 }
 
 class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
-  // Placeholder for video player controller
-  // bool _isPlaying = true;
+  late VideoPlayerController _controller;
+  Position? _currentPosition;
+  GoogleMapController? _mapController;
+
+  // WebSocket & Detection
+  WebSocketChannel? _channel;
+  List<dynamic> _detections = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initLocationService();
+    _connectWebSocket();
+    print('🎥 [LiveStream] Initializing Video Player...');
+
+    // HLS Stream URL
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse('http://1.238.76.151:8888/live/drone/index.m3u8'),
+    );
+
+    _controller
+        .initialize()
+        .then((_) {
+          print(
+            '✅ [LiveStream] Video Initialized! (Duration: ${_controller.value.duration})',
+          );
+          setState(() {});
+          _controller.play();
+        })
+        .catchError((error) {
+          print('❌ [LiveStream] Initialization Error: $error');
+        });
+
+    _controller.addListener(() {
+      if (_controller.value.hasError) {
+        print(
+          '❌ [LiveStream] Player Error: ${_controller.value.errorDescription}',
+        );
+      }
+      if (_controller.value.isBuffering) {
+        print(
+          '⏳ [LiveStream] Buffering... (Buffered: ${_controller.value.buffered.length} ranges)',
+        );
+      }
+      // Print status every second if playing
+      if (_controller.value.isPlaying &&
+          _controller.value.position.inSeconds % 5 == 0 &&
+          _controller.value.position.inMilliseconds % 1000 < 50) {
+        print('▶️ [LiveStream] Playing... Pos: ${_controller.value.position}');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _channel?.sink.close();
+    super.dispose();
+  }
+
+  void _connectWebSocket() {
+    try {
+      // Connect to Backend WebSocket
+      // NOTE: Replace with your actual server IP
+      _channel = WebSocketChannel.connect(
+        Uri.parse('ws://1.238.76.151:8000/stream/ws'),
+      );
+
+      _channel!.stream.listen(
+        (message) {
+          final data = jsonDecode(message);
+          // data structure: { "label": str, "confidence": float, "bbox": [x, y, w, h], "timestamp": float, "detection_id": int? }
+          setState(() {
+            // Replace detections list with new single detection (or append if list)
+            // For now, we just show the latest single detection
+            _detections = [data];
+          });
+
+          // GPS Sync removed as per new requirement (Mission Start sets location)
+        },
+        onError: (error) {
+          print('❌ [WebSocket] Error: $error');
+        },
+      );
+    } catch (e) {
+      print('❌ [WebSocket] Connection Failed: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,34 +113,30 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
         children: [
           // Background Video Placeholder
           // Live Stream
-          Mjpeg(
-            isLive: true,
-            stream: 'http://172.30.1.52:8000/stream/live',
-            fit: BoxFit.cover,
-            error: (context, error, stack) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                      size: 48,
+          // Live Stream (HLS)
+          _controller.value.isInitialized
+              ? SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _controller.value.size.width,
+                      height: _controller.value.size.height,
+                      child: Stack(
+                        children: [
+                          VideoPlayer(_controller),
+                          // Detection Overlay
+                          CustomPaint(
+                            size: Size.infinite,
+                            painter: BoundingBoxPainter(_detections),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '스트림 연결 실패\n$error',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
+                  ),
+                )
+              : const Center(
+                  child: CircularProgressIndicator(color: Colors.blue),
                 ),
-              );
-            },
-            loading: (context) => const Center(
-              child: CircularProgressIndicator(color: Colors.blue),
-            ),
-          ),
 
           // Crosshair / Bounding Box Overlay
           Center(
@@ -210,7 +296,13 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                   children: [
                     _buildTelemetryCard('고도', '45', 'm'),
                     _buildTelemetryCard('속도', '2.4', 'm/s'),
-                    _buildTelemetryCard('거리', '120', 'm'),
+                    _buildTelemetryCard(
+                      'GPS',
+                      _currentPosition != null
+                          ? _currentPosition!.latitude.toStringAsFixed(4)
+                          : '...',
+                      '',
+                    ),
                   ],
                 ),
               ],
@@ -307,47 +399,55 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.white24),
-                    image: const DecorationImage(
-                      image: NetworkImage(
-                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAfskbVkeZvLrjzf8N_LxZuvSsVW5KAijU2i2Yphb9xAjW89cMkLxpcp2Zks0Lbl0INHCk83V0wvZbLjcBvm2IGHAtpizKzbluAKmS00VpbP0rrbG6LuC7G-6nLu-5cGnD7Aki7-N6F4mV2jCUfpa69uwaCI-ehk1pX9HuB3KvdV_SwzHCjbhx-vwY-EKKY7rkI8qhq6jXr8xmMttpdI5dfveSZrD4Lh5_h-hH1fZN7cqHnozakEnzeHWx3LSGDrkhkyjFWOmuUK5o',
-                      ),
-                      fit: BoxFit.cover,
-                      opacity: 0.8,
-                    ),
                   ),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            border: Border.all(color: Colors.white, width: 2),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Text(
-                            'N',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      children: [
+                        _currentPosition != null
+                            ? GoogleMap(
+                                initialCameraPosition: CameraPosition(
+                                  target: LatLng(
+                                    _currentPosition!.latitude,
+                                    _currentPosition!.longitude,
+                                  ),
+                                  zoom: 15,
+                                ),
+                                myLocationEnabled: true,
+                                myLocationButtonEnabled: false,
+                                zoomControlsEnabled: false,
+                                onMapCreated: (GoogleMapController controller) {
+                                  _mapController = controller;
+                                },
+                              )
+                            : const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                        // N Compass overlay
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Text(
+                              'N',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -489,5 +589,121 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _initLocationService() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      print('⚠️ Location services are disabled.');
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        print('⚠️ Location permissions are denied');
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      print(
+        '⚠️ Location permissions are permanently denied, we cannot request permissions.',
+      );
+      return;
+    }
+
+    // Get current position stream
+    Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    ).listen((Position position) {
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+        });
+        print(
+          '📍 [GPS] Lat: ${position.latitude}, Long: ${position.longitude}',
+        );
+
+        // Update Map Camera if map is created
+        if (_mapController != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: LatLng(position.latitude, position.longitude),
+                zoom: 15,
+              ),
+            ),
+          );
+        }
+      }
+    });
+  }
+}
+
+class BoundingBoxPainter extends CustomPainter {
+  final List<dynamic> detections;
+
+  BoundingBoxPainter(this.detections);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+
+    final textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 14,
+      backgroundColor: Colors.red,
+    );
+
+    for (var detection in detections) {
+      // bbox is [centerX, centerY, width, height] (Normalized)
+      // We need to convert to [left, top, width, height] for drawing
+      final bbox = detection['bbox']; // List<dynamic>
+      final double x = bbox[0];
+      final double y = bbox[1];
+      final double w = bbox[2];
+      final double h = bbox[3];
+
+      // Convert Center-XYWH to TopLeft-XYWH
+      // left = x - w/2
+      // top = y - h/2
+      final double left = (x - w / 2) * size.width;
+      final double top = (y - h / 2) * size.height;
+      final double width = w * size.width;
+      final double height = h * size.height;
+
+      final rect = Rect.fromLTWH(left, top, width, height);
+      canvas.drawRect(rect, paint);
+
+      // Draw Label
+      final label =
+          '${detection['label']} ${(detection['confidence'] * 100).toInt()}%';
+      final textSpan = TextSpan(text: label, style: textStyle);
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(left, top - 20), // Draw above the box
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true; // Always repaint when detections change
   }
 }

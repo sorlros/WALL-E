@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../models/mission_model.dart';
 import 'mission_detail_screen.dart';
 
 class GalleryScreen extends StatelessWidget {
@@ -59,7 +60,7 @@ class GalleryScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: FutureBuilder<List<dynamic>>(
+      body: FutureBuilder<List<Mission>>(
         future: ApiService.getMissions(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -120,7 +121,7 @@ class GalleryScreen extends StatelessWidget {
             itemCount: missions.length,
             itemBuilder: (context, index) {
               final mission = missions[index];
-              final detections = (mission['detections'] as List?) ?? [];
+              final detections = mission.detections;
 
               return Card(
                 color: const Color(0xFF1A2332),
@@ -138,23 +139,22 @@ class GalleryScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       image:
                           (detections.isNotEmpty &&
-                              detections.last['image_url'] != null)
+                              detections.last.imageUrl.isNotEmpty)
                           ? DecorationImage(
                               image: NetworkImage(
-                                '${ApiService.baseUrl}${detections.last['image_url']}',
+                                '${ApiService.baseUrl}${detections.last.imageUrl}',
                               ),
                               fit: BoxFit.cover,
                             )
                           : null,
                     ),
                     child:
-                        (detections.isEmpty ||
-                            detections.last['image_url'] == null)
+                        (detections.isEmpty || detections.last.imageUrl.isEmpty)
                         ? const Icon(Icons.broken_image, color: Colors.white24)
                         : null,
                   ),
                   title: Text(
-                    mission['name'] ?? 'Unnamed Mission',
+                    mission.name,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -165,7 +165,7 @@ class GalleryScreen extends StatelessWidget {
                     children: [
                       const SizedBox(height: 8),
                       Text(
-                        mission['description'] ?? 'No description',
+                        mission.description ?? 'No description',
                         style: const TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 4),
@@ -180,7 +180,7 @@ class GalleryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        mission['created_at']?.split('T')[0] ?? '',
+                        mission.createdAt.toIso8601String().split('T')[0],
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,

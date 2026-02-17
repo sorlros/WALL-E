@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../models/user_model.dart';
+import '../models/mission_model.dart';
 
 class ApiService {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS simulator/web
@@ -9,19 +11,16 @@ class ApiService {
   static const String baseUrl = 'http://10.0.2.2:8000';
 
   // 사용자 정보 저장
-  static Map<String, dynamic>? _currentUser;
+  static User? _currentUser;
   static String? _accessToken;
   static String? _refreshToken;
 
-  static Map<String, dynamic>? get currentUser => _currentUser;
+  static User? get currentUser => _currentUser;
   static String? get accessToken => _accessToken;
   static bool get isLoggedIn => _currentUser != null;
 
   // LOGIN
-  static Future<Map<String, dynamic>> login(
-    String email,
-    String password,
-  ) async {
+  static Future<User> login(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
@@ -33,9 +32,12 @@ class ApiService {
       // 사용자 정보 저장
       _accessToken = data['access_token'];
       _refreshToken = data['refresh_token'];
-      _currentUser = data['user'];
-      return data;
+
+      _currentUser = User.fromJson(data['user']);
+      print('✅ 로그인 성공! User: ${_currentUser?.email}');
+      return _currentUser!;
     } else {
+      print('❌ 로그인 실패: ${response.body}');
       throw Exception('Login failed: ${response.body}');
     }
   }
@@ -48,11 +50,7 @@ class ApiService {
   }
 
   // SIGNUP
-  static Future<Map<String, dynamic>> signup(
-    String email,
-    String password,
-    String name,
-  ) async {
+  static Future<User> signup(String email, String password, String name) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/signup'),
       headers: {'Content-Type': 'application/json'},
@@ -60,25 +58,49 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+      // Backend returns {message: ..., user: ...}
+      // Note: User might be null if email confirmation required, but typically returns user object
+      if (data['user'] != null) {
+        return User.fromJson(data['user']);
+      } else {
+        // Fallback or specific handling for unconfirmed user
+        throw Exception(
+          'Signup successful but user data missing (verification needed?)',
+        );
+      }
     } else {
       throw Exception('Signup failed: ${response.body}');
     }
   }
 
   // Create a new mission
-  static Future<Map<String, dynamic>> createMission(
+  static Future<Mission> createMission(
     String name,
     String description,
+    double? lat,
+    double? lng,
   ) async {
+    if (_accessToken == null) {
+      throw Exception('Not authenticated');
+    }
+
     final response = await http.post(
       Uri.parse('$baseUrl/missions/'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'name': name, 'description': description}),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $_accessToken',
+      },
+      body: jsonEncode({
+        'name': name,
+        'description': description,
+        'gps_lat': lat,
+        'gps_lng': lng,
+      }),
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return Mission.fromJson(jsonDecode(response.body));
     } else {
       throw Exception('Failed to create mission: ${response.body}');
     }
@@ -90,8 +112,6 @@ class ApiService {
     required File imageFile,
     required String label,
     required double confidence,
-    double? latitude,
-    double? longitude,
   }) async {
     var request = http.MultipartRequest(
       'POST',
@@ -100,8 +120,6 @@ class ApiService {
 
     request.fields['label'] = label;
     request.fields['confidence'] = confidence.toString();
-    if (latitude != null) request.fields['gps_lat'] = latitude.toString();
-    if (longitude != null) request.fields['gps_lng'] = longitude.toString();
 
     request.files.add(
       await http.MultipartFile.fromPath(
@@ -120,11 +138,15 @@ class ApiService {
   }
 
   // Fetch all missions
-  static Future<List<dynamic>> getMissions() async {
+  static Future<List<Mission>> getMissions() async {
     final response = await http.get(Uri.parse('$baseUrl/missions/'));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      List<dynamic> body = jsonDecode(response.body);
+      List<Mission> missions = body
+          .map((dynamic item) => Mission.fromJson(item))
+          .toList();
+      return missions;
     } else {
       throw Exception('Failed to load missions');
     }
@@ -138,6 +160,27 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to complete mission: ${response.body}');
+    }
+  }
+
+  // Update GPS for a specific detection
+  static Future<void> updateDetectionGps(
+    int detectionId,
+    double lat,
+    double lng,
+  ) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/missions/detections/$detectionId/gps'),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: {'gps_lat': lat.toString(), 'gps_lng': lng.toString()},
+    );
+
+    if (response.statusCode != 200) {
+      print(
+        '❌ Failed to update GPS for detection $detectionId: ${response.body}',
+      );
+    } else {
+      print('✅ GPS updated for detection $detectionId');
     }
   }
 }

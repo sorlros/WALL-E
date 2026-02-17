@@ -20,12 +20,12 @@ class ProfileScreen extends StatelessWidget {
     final user = ApiService.currentUser;
 
     // 디버깅: 사용자 정보 출력
-    print('Profile Screen - User data: $user');
-    print('Profile Screen - User metadata: ${user?['user_metadata']}');
+    print('Profile Screen - User data: ${user?.email}');
+    print('Profile Screen - User metadata: ${user?.metadata}');
 
-    final userEmail = user?['email'] ?? 'Unknown';
+    final userEmail = user?.email ?? 'Unknown';
     // user_metadata에서 full_name 가져오기 (없으면 email 앞부분 사용)
-    final userMetadata = user?['user_metadata'] ?? {};
+    final userMetadata = user?.metadata ?? {};
     final userName = (userMetadata['full_name']?.toString().isNotEmpty == true)
         ? userMetadata['full_name']
         : (userEmail != 'Unknown' ? userEmail.split('@')[0] : '사용자');

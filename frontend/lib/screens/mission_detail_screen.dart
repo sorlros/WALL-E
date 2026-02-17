@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../models/mission_model.dart';
+import '../models/detection_model.dart';
 
 class MissionDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> mission;
+  final Mission mission;
 
-  const MissionDetailScreen({Key? key, required this.mission})
-    : super(key: key);
+  const MissionDetailScreen({super.key, required this.mission});
 
   @override
   Widget build(BuildContext context) {
-    final detections = mission['detections'] as List<dynamic>? ?? [];
+    final detections = mission.detections;
 
     return Scaffold(
       backgroundColor: const Color(0xFF101622),
       appBar: AppBar(
-        title: Text(mission['name'] ?? '미션 상세'),
+        title: Text(mission.name),
         backgroundColor: const Color(0xFF101622),
       ),
       body: SingleChildScrollView(
@@ -28,7 +29,7 @@ class MissionDetailScreen extends StatelessWidget {
 
             // Detections Grid Header
             Text(
-              '감지된 결항 (${detections.length})',
+              '감지된 결합 (${detections.length})',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -86,7 +87,7 @@ class MissionDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            mission['description'] ?? '설명 없음',
+            mission.description ?? '설명 없음',
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 12),
@@ -96,7 +97,7 @@ class MissionDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            mission['created_at'] ?? '',
+            mission.createdAt.toIso8601String().split('T')[0],
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
         ],
@@ -104,13 +105,10 @@ class MissionDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetectionCard(
-    BuildContext context,
-    Map<String, dynamic> detection,
-  ) {
+  Widget _buildDetectionCard(BuildContext context, Detection detection) {
     // Construct full image URL
     // image_url is like: "/storage/images/2024-xx-xx/uuid.jpg"
-    final imageUrl = '${ApiService.baseUrl}${detection['image_url']}';
+    final imageUrl = '${ApiService.baseUrl}${detection.imageUrl}';
 
     return GestureDetector(
       onTap: () {
@@ -150,7 +148,7 @@ class MissionDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      detection['label'] ?? 'Unknown',
+                      detection.label,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -158,9 +156,9 @@ class MissionDetailScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${(detection['confidence'] * 100).toStringAsFixed(1)}%',
+                      '${(detection.confidence * 100).toStringAsFixed(1)}%',
                       style: TextStyle(
-                        color: (detection['confidence'] > 0.8)
+                        color: (detection.confidence > 0.8)
                             ? Colors.red
                             : Colors.orange,
                         fontSize: 10,

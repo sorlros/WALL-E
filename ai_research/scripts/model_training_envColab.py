@@ -9,38 +9,25 @@
 
 from ultralytics import YOLO
 
-model = YOLO('yolo11s.pt') # mAP 0.5+를 위한 시력 상향
+model = YOLO('yolo11s.pt') # Small 모델: Nano보다 약 3.6배 많은 파라미터로 균열 검출력 극대화 (GTX 1060 실시간 가능)
 
 result = model.train(
     data='/content/refined_dataset/data.yaml',
-    epochs=200,        # SGD 수렴을 위해 넉넉하게 설정
+    epochs=100,
     imgsz=640,
-    batch=16,          # Small 모델 체급 고려하여 조정
-    patience=100,      # 조기 종료 방지
-
-    # ========= [V12 학습 최적화: SGD Stability] ========= #
-    optimizer='SGD',
-    lr0=0.01,
-    momentum=0.937,
-    weight_decay=0.0005,
-    cos_lr=True,
-
-    # ========= [V12 증강 전략: "Back to Basics"] ========= #
-    # 1024px 오프라인 증강 데이터의 품질을 보존하기 위해 실시간 노이즈 최소화
-    mosaic=0.0,        
-    mixup=0.0,         
-    fliplr=0.5,        
-    flipud=0.0,
-    degrees=0.0,
-    translate=0.0,     # Offline Crop이 이미 수행
-    scale=0.0,         # Offline Crop이 이미 수행
-    shear=0.0,
-    perspective=0.0,
+    batch=16,
+    patience=0,        # 끝까지 학습하도록 0으로 설정
+    device=0,
+    optimizer='SGD',    # AdamW보다 정교한 학습을 위해 SGD로 변경
     
-    # 색상 변환 (미세 조정)
-    hsv_h=0.01,
-    hsv_s=0.5,
-    hsv_v=0.3,
+    # 증강 전략 수정
+    mosaic=1.0,        # 작은 균열 검출을 위해 필수
+    mixup=0.1,         # 데이터가 적을 때 일반화 성능 향상
+    overlap_mask=True,
+    
+    # 학습률 조정
+    lr0=0.01,          # SGD 사용 시 전형적인 초기 학습률
+    cos_lr=True,
 )
 
 print('============================학습 종료============================')
@@ -51,7 +38,3 @@ metrics = model.val() # 이전에 학습한 best.pt를 자동으로 사용하여
 print(f"Validation mAP50-95: {metrics.box.map}")
 print(f"Validation mAP50: {metrics.box.map50}")
 print('============================검증 종료============================')
-
-from google.colab import runtime
-print('학습이 완료되었습니다. 런타임을 종료합니다.')
-runtime.unassign()

@@ -9,24 +9,38 @@
 
 from ultralytics import YOLO
 
-model = YOLO('yolo11s.pt') # Small 모델: Nano보다 약 3.6배 많은 파라미터로 균열 검출력 극대화 (GTX 1060 실시간 가능)
+model = YOLO('yolo11n.pt') # Nano 모델: 가장 가볍고 빠른 모델 (실시간성 최적화)
 
 result = model.train(
     data='/content/refined_dataset/data.yaml',
     epochs=100,
     imgsz=640,
     batch=16,
-    patience=0,        # 끝까지 학습하도록 0으로 설정
+    patience=70,
     device=0,
-    optimizer='SGD',    # AdamW보다 정교한 학습을 위해 SGD로 변경
+    optimizer='SGD',
     
-    # 증강 전략 수정
-    mosaic=1.0,        # 작은 균열 검출을 위해 필수
-    mixup=0.1,         # 데이터가 적을 때 일반화 성능 향상
+    # 📈 최적화: Stability & Generalization
+    multi_scale=False,       # ZeroDivisionError 방지를 위해 비활성화 (Colab 환경 이슈)
+    # label_smoothing=0.1,  # (Deprecated) 최신 버전에서 경고가 발생하여 제외
+    
+    # 증강 전략 최적화 (오프라인 증강과 밸런스 유지)
+    hsv_h=0.015,        # 0.03 -> 0.015 (색조 변화 완화)
+    hsv_s=0.5,          # 0.9 -> 0.5 (오프라인 채도와 중복 방지)
+    hsv_v=0.4,          # 0.6 -> 0.4 (오프라인 밝기/감마와 중복 방지)
+    degrees=10.0,       # 15 -> 10 (회전은 오프라인에서 주로 담당)
+    translate=0.1,      # 0.2 -> 0.1
+    scale=0.5,          # 0.7 -> 0.5
+    shear=2.0,          # 5.0 -> 2.0
+    perspective=0.0,    # 오프라인에서 담당
+    flipud=0.5,
+    fliplr=0.5,
+    mosaic=1.0,
+    mixup=0.1,          # 0.15 -> 0.1 (안정적인 데이터 품질 유지)
     overlap_mask=True,
     
     # 학습률 조정
-    lr0=0.01,          # SGD 사용 시 전형적인 초기 학습률
+    lr0=0.01,
     cos_lr=True,
 )
 

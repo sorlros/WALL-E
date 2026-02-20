@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/api_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -22,6 +23,8 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
   // WebSocket & Detection
   WebSocketChannel? _channel;
   List<dynamic> _detections = [];
+  int _savedCount = 0; // Track cumulative saved detections
+  bool _showOverlay = true; // Toggle for Bounding Box Overlay
 
   @override
   void initState() {
@@ -31,8 +34,20 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
     print('🎥 [LiveStream] Initializing Video Player...');
 
     // HLS Stream URL
+    // Priority: 1. .env HLS_URL (for hybrid setup) -> 2. Runtime API IP -> 3. Default
+    String hlsBase;
+    if (dotenv.env['HLS_URL'] != null && dotenv.env['HLS_URL']!.isNotEmpty) {
+      hlsBase = dotenv.env['HLS_URL']!;
+    } else if (ApiService.apiIp.isNotEmpty) {
+      hlsBase = 'http://${ApiService.apiIp}:8888';
+    } else {
+      hlsBase = 'http://1.238.76.151:8888';
+    }
+
+    print('🎥 [LiveStream] HLS URL: $hlsBase/live/drone/index.m3u8');
+
     _controller = VideoPlayerController.networkUrl(
-      Uri.parse('http://1.238.76.151:8888/live/drone/index.m3u8'),
+      Uri.parse('$hlsBase/live/drone/index.m3u8'),
     );
 
     _controller
@@ -78,20 +93,32 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
   void _connectWebSocket() {
     try {
       // Connect to Backend WebSocket
-      // NOTE: Replace with your actual server IP
-      _channel = WebSocketChannel.connect(
-        Uri.parse('ws://1.238.76.151:8000/stream/ws'),
-      );
+      final wsUrl = ApiService.apiIp.isNotEmpty
+          ? 'ws://${ApiService.apiIp}:${ApiService.apiPort}'
+          : (dotenv.env['WS_URL'] ?? 'ws://1.238.76.151:8000');
+
+      _channel = WebSocketChannel.connect(Uri.parse('$wsUrl/stream/ws'));
 
       _channel!.stream.listen(
         (message) {
-          final data = jsonDecode(message);
-          // data structure: { "label": str, "confidence": float, "bbox": [x, y, w, h], "timestamp": float, "detection_id": int? }
-          setState(() {
-            // Replace detections list with new single detection (or append if list)
-            // For now, we just show the latest single detection
-            _detections = [data];
-          });
+          print('📩 [WebSocket] Received: $message'); // Debug Raw Message
+          try {
+            final data = jsonDecode(message);
+            print('✅ [WebSocket] Parsed Data: $data'); // Debug Parsed Data
+
+            if (mounted) {
+              setState(() {
+                // Replace detections list with new single detection (or append if list)
+                // For now, we just show the latest single detection
+                _detections = [data];
+                if (data.containsKey('saved_count')) {
+                  _savedCount = data['saved_count'];
+                }
+              });
+            }
+          } catch (e) {
+            print('❌ [WebSocket] Parsing Error: $e');
+          }
 
           // GPS Sync removed as per new requirement (Mission Start sets location)
         },
@@ -117,7 +144,7 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
           _controller.value.isInitialized
               ? SizedBox.expand(
                   child: FittedBox(
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     child: SizedBox(
                       width: _controller.value.size.width,
                       height: _controller.value.size.height,
@@ -125,10 +152,11 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                         children: [
                           VideoPlayer(_controller),
                           // Detection Overlay
-                          CustomPaint(
-                            size: Size.infinite,
-                            painter: BoundingBoxPainter(_detections),
-                          ),
+                          if (_showOverlay)
+                            CustomPaint(
+                              size: Size.infinite,
+                              painter: BoundingBoxPainter(_detections),
+                            ),
                         ],
                       ),
                     ),
@@ -137,6 +165,20 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
               : const Center(
                   child: CircularProgressIndicator(color: Colors.blue),
                 ),
+
+          // Debug Overlay (Temporary)
+          Positioned(
+            top: 100,
+            left: 20,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              color: Colors.black54,
+              child: Text(
+                'Saved: $_savedCount\nLast: ${_detections.isNotEmpty ? "${_detections[0]['label']} (${(_detections[0]['confidence'] * 100).toInt()}%)" : "None"}',
+                style: const TextStyle(color: Colors.yellow, fontSize: 16),
+              ),
+            ),
+          ),
 
           // Crosshair / Bounding Box Overlay
           Center(
@@ -158,152 +200,6 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                     height: MediaQuery.of(context).size.height * 0.6,
                     color: Colors.white30,
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // Top Header (Telemetry)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: 16,
-            right: 16,
-            child: Column(
-              children: [
-                // Main Top Bar
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF101622).withOpacity(0.65),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.withOpacity(0.8),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '실시간',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Container(
-                            width: 1,
-                            height: 16,
-                            color: Colors.white24,
-                          ),
-                          const SizedBox(width: 16),
-                          const Icon(Icons.wifi, color: Colors.blue, size: 16),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '강함',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      // AI Mode Badge (Hidden on small screens in original, keeping it here)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white10),
-                        ),
-                        child: RichText(
-                          text: const TextSpan(
-                            text: 'AI 모드: ',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                            children: [
-                              TextSpan(
-                                text: '점검',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          const Text(
-                            '82%',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          RotationTransition(
-                            turns: const AlwaysStoppedAnimation(90 / 360),
-                            child: const Icon(
-                              Icons.battery_full,
-                              color: Colors.green,
-                              size: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.settings,
-                              color: Colors.white70,
-                            ),
-                            onPressed: () {},
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Telemetry Data Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildTelemetryCard('고도', '45', 'm'),
-                    _buildTelemetryCard('속도', '2.4', 'm/s'),
-                    _buildTelemetryCard(
-                      'GPS',
-                      _currentPosition != null
-                          ? _currentPosition!.latitude.toStringAsFixed(4)
-                          : '...',
-                      '',
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -380,6 +276,46 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                // NEW: AI Overlay Toggle Button
+                Container(
+                  width: 48,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF101622).withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: _showOverlay ? Colors.green : Colors.white10,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _showOverlay ? Icons.layers : Icons.layers_clear,
+                          color: _showOverlay ? Colors.green : Colors.grey,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _showOverlay = !_showOverlay;
+                          });
+                        },
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          _showOverlay ? 'AI ON' : 'AI OFF',
+                          style: TextStyle(
+                            color: _showOverlay ? Colors.green : Colors.grey,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -392,7 +328,8 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Map Thumbnail
+                // Map Thumbnail Removed
+                /*
                 Container(
                   width: 90,
                   height: 90,
@@ -451,6 +388,7 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
+                */
 
                 // Stop Button
                 Expanded(

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api import stream, missions, auth
 import os
@@ -7,6 +8,14 @@ import os
 os.makedirs("storage", exist_ok=True)
 
 app = FastAPI(title="Wall-E Backend", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mount Static Files
 app.mount("/storage", StaticFiles(directory="storage"), name="storage")
@@ -25,6 +34,10 @@ async def startup_event():
     print("Starting up Wall-E backend...")
     # Inject stream_manager instance into missions API
     missions.set_stream_manager(stream.stream_manager)
+    
+    # Inject Main Event Loop into Stream API for Thread-Safe WebSocket Broadcast
+    import asyncio
+    stream.set_global_loop(asyncio.get_running_loop())
 
 @app.on_event("shutdown")
 async def shutdown_event():

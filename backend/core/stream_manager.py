@@ -21,15 +21,29 @@ logger = logging.getLogger(__name__)
 
 class StreamManager:
     def __init__(self):
-        self.rtmp_url = os.getenv("RTMP_URL", "rtmp://localhost:1935/live/test")
+        self.rtmp_url = os.getenv("RTMP_URL", "rtmp://1.238.76.151:1935/live/drone")
         # If rtmp_url is a digit string (e.g. "0"), convert to int for webcam index
         if isinstance(self.rtmp_url, str) and self.rtmp_url.isdigit():
             self.rtmp_url = int(self.rtmp_url)
         
         # Initialize YOLO model
-        logger.info("Loading YOLO11n model...")
-        self.model = YOLO("yolo11n.pt")
-        logger.info("YOLO11n model loaded.")
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) # Wall-E root
+        # Actually line 15 implies 3 dirnames go to Wall-E root.
+        # But let's look at line 15: os.path.join(..., "backend", ".env")
+        # If I want backend/ml_models, I should use the backend root.
+        
+        # Let's verify:
+        # __file__ = backend/core/stream_manager.py
+        # dirname 1 = backend/core
+        # dirname 2 = backend
+        
+        backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        project_root = os.path.dirname(backend_root)
+        model_path = os.path.join(project_root, "runs", "detect", "wall-e-crack-detection", "v3_mixed_original2", "weights", "best.pt")
+        
+        logger.info(f"Loading Crack Detection Model from {model_path}...")
+        self.model = YOLO(model_path)
+        logger.info(f"Crack Detection Model loaded. Classes: {self.model.names}")
 
         self.cap = None
         self.is_running = False
@@ -41,9 +55,19 @@ class StreamManager:
         self.last_frame_time = 0
         
         # Mission & Detection Logic
+        # self.active_mission_id = None
+        # self.last_save_time = 0
         self.active_mission_id = None
         self.last_save_time = 0
         self.save_cooldown = 2.0  # Save detection at most once every 2 seconds
+        self._processed_track_ids = set() # Store track_ids that have been saved to DB
+        
+        # Callback for real-time updates (e.g. WebSocket)
+        self.on_detection = None
+
+    def set_callback(self, callback):
+        """Set a callback function to be called on new detections."""
+        self.on_detection = callback
 
     def start(self):
         """Request the capture thread to start."""
@@ -55,6 +79,19 @@ class StreamManager:
         self.thread.start()
         logger.info(f"Stream thread started for URL: {self.rtmp_url}")
         return True
+
+    def start_mission(self, mission_id):
+        """Start a new mission and reset tracking state."""
+        self.active_mission_id = mission_id
+        self._processed_track_ids.clear()
+        logger.info(f"Started mission {mission_id}. Tracking IDs reset.")
+        self.start() # Ensure stream is running
+
+    def stop_mission(self):
+        """Stop the current active mission."""
+        self.active_mission_id = None
+        logger.info("Mission stopped.")
+
 
     def _preprocess_frame(self, frame, target_size=(640, 640)):
         """
@@ -92,20 +129,43 @@ class StreamManager:
         # Cache for the last detection results (bounding boxes)
         last_results = None 
         
+        # Performance Profiling Variables
+        fps_start_time = time.time()
+        
         while self.is_running:
             # Reconnect logic
             if self.cap is None or not self.cap.isOpened():
                 try:
                     logger.info(f"Connecting to stream: {self.rtmp_url}")
-                    self.cap = cv2.VideoCapture(self.rtmp_url)
+                    # Mac-friendly OpenCV flags for RTMP
+                    if isinstance(self.rtmp_url, str):
+                        # Try to use FFmpeg but fallback safely, or AVFOUNDATION
+                        import platform
+                        if platform.system() == 'Darwin':
+                            # Give AVFoundation priority, fallback to ANY
+                            self.cap = cv2.VideoCapture(self.rtmp_url, cv2.CAP_ANY)
+                        else:
+                            self.cap = cv2.VideoCapture(self.rtmp_url, cv2.CAP_FFMPEG)
+                    else:
+                        self.cap = cv2.VideoCapture(self.rtmp_url)
+                    
                     if not self.cap.isOpened():
                         logger.error(f"Failed to open stream. Retrying in 2s...")
                         time.sleep(2)
                         continue
                     
+                    # Request specific resolution and FPS (1920x1080 @ 30fps)
+                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+                    self.cap.set(cv2.CAP_PROP_FPS, 30)
+
                     # Buffer size optimization for low latency
                     self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                     logger.info("Stream connected successfully.")
+                    
+                    # Reset FPS timer on reconnect
+                    fps_start_time = time.time()
+                    frame_count = 0
                 except Exception as e:
                     logger.error(f"Error connecting: {e}")
                     time.sleep(2)
@@ -123,33 +183,97 @@ class StreamManager:
                 
                 frame_count += 1
                 
-                # 1. Preprocess every frame (needed for consistent display size)
-                processed_frame = self._preprocess_frame(frame)
+                # 1. Preprocess: removed to ensure correct bbox mapping for saved images
+                # processed_frame = self._preprocess_frame(frame)
+                processed_frame = frame 
 
                 # 2. Inference (Interval Check)
                 if frame_count % frame_interval == 0:
-                    # Run YOLOv8
-                    results = self.model(processed_frame, conf=0.5, verbose=False)
-                    if results:
-                        last_results = results[0] # Cache the result
+                    # Run YOLO11n with Tracking
+                    # persist=True is crucial for keeping IDs across frames
+                    start_time = time.time()
+                    results = self.model.track(processed_frame, conf=0.6, persist=True, verbose=False)
+                    detection_time = time.time()
+                    inference_ms = (detection_time - start_time) * 1000
+                    
+                    # Performance Profiling (Every 30 frames)
+                    if frame_count % 30 == 0:
+                        elapsed = time.time() - fps_start_time
+                        actual_fps = 30 / elapsed if elapsed > 0 else 0
                         
-                        # Auto-Save Logic
-                        # If mission is active and confidence is high, save to DB
+                        # Get YOLO inference time from results if available, else approximate
+                        yolo_speed = results[0].speed['inference'] if results else inference_ms
+                        
+                        logger.info(f"📊 [성능 지표] 입력 해상도: {frame.shape[1]}x{frame.shape[0]} | 실제 스트리밍 FPS: {actual_fps:.2f} | YOLO 추론 속도: {yolo_speed:.1f}ms")
+                        fps_start_time = time.time()
+
+                    if results and results[0].boxes:
+                        last_results = results[0] # Cache the result
+                        boxes = results[0].boxes
+                        
+                        # Auto-Save Logic (Loop through ALL detections)
                         if self.active_mission_id:
-                            boxes = results[0].boxes
-                            if boxes:
-                                best_conf = float(boxes.conf[0]) # Tensor to float
-                                best_cls = int(boxes.cls[0])
-                                label = results[0].names[best_cls]
+                            # Iterate over each box to check track_id
+                            # boxes.id is None if no tracks found
+                            if boxes.id is not None:
+                                track_ids = boxes.id.int().cpu().tolist()
+                                confs = boxes.conf.cpu().tolist()
+                                clss = boxes.cls.int().cpu().tolist()
+                                xywhns = boxes.xywhn.cpu().tolist()
                                 
-                                # Get Bounding Box [x, y, w, h] (normalized) for DB
-                                # xywhn = Center X, Center Y, Width, Height (Normalized)
-                                bbox_norm = boxes.xywhn[0].tolist() # [x, y, w, h]
-                                
-                                current_time = time.time()
-                                if best_conf > 0.6 and (current_time - self.last_save_time > self.save_cooldown):
-                                    self._save_detection(frame, label, best_conf, bbox_norm)
-                                    self.last_save_time = current_time
+                                for i, track_id in enumerate(track_ids):
+                                    conf = confs[i]
+                                    cls = clss[i]
+                                    bbox_norm = xywhns[i]
+                                    label = results[0].names[cls]
+                                    
+                                    # Unique Check: Only save if ID is NEW and Confidence is High
+                                    if track_id not in self._processed_track_ids:
+                                        if conf > 0.7:
+                                            # Save!
+                                            self._save_detection(frame, label, conf, bbox_norm, detection_time)
+                                            self._processed_track_ids.add(track_id)
+                                            logger.info(f"🆕 [Tracking] New Object ID {track_id} Saved! ({label}, {conf:.2f})")
+                                        else:
+                                            # Low confidence, but new ID. Wait for better frame?
+                                            # For now, we simple ignore. If it gets better later, ID is same? 
+                                            # Actually, if we don't save now, track_id is NOT added. 
+                                            # So if next frame it is 0.8, it WILL be saved.
+                                            pass
+                                    else:
+                                        # Already processed this ID
+                                        pass
+                            else:
+                                # Fallback if no IDs (tracking failed but detection worked?)
+                                pass
+                                    
+                        # Real-time WebSocket Logic (Send BEST detection for UI)
+                        # We just send the first one (highest conf) for simple UI
+                        if self.on_detection and boxes:
+                            best_idx = 0 # YOLO sorts by conf? usually.
+                            
+                            track_id = int(boxes.id[best_idx]) if boxes.id is not None else None
+                            conf = float(boxes.conf[best_idx])
+                            cls = int(boxes.cls[best_idx])
+                            label = results[0].names[cls]
+                            bbox_norm = boxes.xywhn[best_idx].tolist()
+                            
+                            total_detections = len(boxes)
+                            # Logs can be noisy, maybe reduce log level or frequency
+                            # logger.info(f"⚡ ...")
+
+                            detection_data = {
+                                "label": label,
+                                "confidence": conf,
+                                "bbox": bbox_norm,
+                                "timestamp": time.time(),
+                                "count": total_detections, 
+                                "saved_count": len(self._processed_track_ids), # Cumulative saved count
+                                "track_id": track_id,
+                                "detection_id": None # We don't track DB ID for stream updates usually
+                            }
+                            if self.on_detection:
+                                self.on_detection(detection_data)
                 
                 # 3. Post-process: Overlay cached results on CURRENT frame
                 final_output = processed_frame # Start with current raw frame
@@ -178,8 +302,8 @@ class StreamManager:
             self.cap.release()
         logger.info("Capture loop ended.")
 
-    def _save_detection(self, frame, label, confidence, bbox):
-        """Save the detected frame to disk and database."""
+    def _save_detection(self, frame, label, confidence, bbox, detection_timestamp=None):
+        """Save the detected frame to disk and database. Measure latency."""
         try:
             db = SessionLocal()
             
@@ -195,7 +319,13 @@ class StreamManager:
             filepath = os.path.join(save_dir, filename)
             
             # 3. Save Image (Original, Raw frame for better analysis)
+            save_start = time.time()
             cv2.imwrite(filepath, frame)
+            save_end = time.time()
+            
+            if detection_timestamp:
+                latency_ms = (save_end - detection_timestamp) * 1000
+                logger.info(f"⏱️ [Latency] Detection to Save: {latency_ms:.1f}ms (Write took {(save_end - save_start)*1000:.1f}ms)")
             
             # 4. Save to DB
             # Use public URL format for Supabase Storage
@@ -211,11 +341,14 @@ class StreamManager:
             )
             db.add(detection)
             db.commit()
+            db.refresh(detection)
             
-            logger.info(f"Auto-saved detection: {label} ({confidence:.2f})")
+            logger.info(f"Auto-saved detection: {label} ({confidence:.2f}) ID: {detection.id}")
+            return detection
             
         except Exception as e:
             logger.error(f"Failed to save detection: {e}")
+            return None
         finally:
             db.close()
 

@@ -23,14 +23,39 @@ def set_stream_manager(instance):
     global stream_manager_instance
     stream_manager_instance = instance
 
+from api.auth import get_current_user
+
+# ...
+
 @router.post("/", response_model=schemas.Mission)
-def create_mission(mission: schemas.MissionCreate, db: Session = Depends(get_db)):
+def create_mission(
+    mission: schemas.MissionCreate, 
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Ensure Profile exists for valid FK
+    # (In a real app, this should be handled by Supabase triggers on auth.users insert,
+    #  but for robustness we lazy-create it here if missing)
+    profile = db.query(models.Profile).filter(models.Profile.id == current_user.id).first()
+    if not profile:
+        profile = models.Profile(
+            id=current_user.id,
+            username=current_user.email.split("@")[0] if current_user.email else "user",
+            full_name=current_user.user_metadata.get("full_name") if current_user.user_metadata else None,
+            # avatar_url...
+        )
+        db.add(profile)
+        db.commit()
+    
     # Create Mission in DB
     db_mission = models.Mission(
-        title=mission.title, 
+        user_id=current_user.id,
+        title=mission.name, 
         description=mission.description,
         location_name=mission.location_name,
-        location_address=mission.location_address
+        location_address=mission.location_address,
+        gps_lat=mission.gps_lat,
+        gps_lng=mission.gps_lng
     )
     db.add(db_mission)
     db.commit()
@@ -38,9 +63,7 @@ def create_mission(mission: schemas.MissionCreate, db: Session = Depends(get_db)
     
     # Set Active Mission in StreamManager
     if stream_manager_instance:
-        stream_manager_instance.active_mission_id = db_mission.id
-        if not stream_manager_instance.is_running:
-            stream_manager_instance.start()
+        stream_manager_instance.start_mission(db_mission.id)
             
     return db_mission
 
@@ -56,15 +79,32 @@ def complete_mission(mission_id: int, db: Session = Depends(get_db)):
     
     db.commit()
     
-    # Stop auto-saving
-    if stream_manager_instance and stream_manager_instance.active_mission_id == mission_id:
-        stream_manager_instance.active_mission_id = None
+    # Stop auto-saving AND stop the stream manager
+    if stream_manager_instance:
+        print(f"DEBUG: complete_mission called for {mission_id}. Active ID: {stream_manager_instance.active_mission_id}")
+        
+        if stream_manager_instance.active_mission_id == mission_id:
+            stream_manager_instance.stop_mission()
+        
+        # Explicitly stop the stream/inference when mission completes
+        if stream_manager_instance.is_running:
+            print("DEBUG: Stopping StreamManager from complete_mission...")
+            stream_manager_instance.release()
+        else:
+            print("DEBUG: StreamManager was not running.")
+    else:
+        print("DEBUG: stream_manager_instance is None!")
         
     return mission
 
 @router.get("/", response_model=List[schemas.Mission])
-def read_missions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    missions = db.query(models.Mission).offset(skip).limit(limit).all()
+def read_missions(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    missions = db.query(models.Mission).filter(models.Mission.user_id == current_user.id).offset(skip).limit(limit).all()
     return missions
 
 @router.get("/{mission_id}", response_model=schemas.Mission)
@@ -80,8 +120,6 @@ async def create_detection(
     file: UploadFile = File(...),
     label: str = Form(...),
     confidence: float = Form(...),
-    gps_lat: Optional[float] = Form(None),
-    gps_lng: Optional[float] = Form(None),
     bbox: Optional[str] = Form(None), # JSON string
     db: Session = Depends(get_db)
 ):
@@ -122,9 +160,8 @@ async def create_detection(
         image_url=image_url,
         label=label,
         confidence=confidence,
-        gps_lat=gps_lat,
-        gps_lng=gps_lng,
         bbox=bbox_data
+        # GPS removed from here
     )
     
     
@@ -133,5 +170,29 @@ async def create_detection(
     db.refresh(db_detection)
     
     return db_detection
+
+@router.patch("/detections/{detection_id}/gps", response_model=schemas.Mission)
+def update_detection_gps(
+    detection_id: int,
+    gps_lat: float = Form(...),
+    gps_lng: float = Form(...),
+    db: Session = Depends(get_db)
+):
+    # 1. Find detection to get mission_id
+    detection = db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+        
+    # 2. Update MISSION's GPS (as per user request)
+    mission = detection.mission
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found for this detection")
+        
+    mission.gps_lat = gps_lat
+    mission.gps_lng = gps_lng
+    
+    db.commit()
+    db.refresh(mission)
+    return mission
 
 

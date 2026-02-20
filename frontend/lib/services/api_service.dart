@@ -2,13 +2,35 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../models/mission_model.dart';
 
 class ApiService {
+  static SharedPreferences? _prefs;
+
+  static Future<void> init() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
+  static String get apiIp => _prefs?.getString('API_IP') ?? '';
+  static String get apiPort => _prefs?.getString('API_PORT') ?? '';
+
+  static Future<void> setServerConfig(String ip, String port) async {
+    if (_prefs == null) await init();
+    await _prefs?.setString('API_IP', ip);
+    await _prefs?.setString('API_PORT', port);
+  }
+
   // Use 10.0.2.2 for Android Emulator, localhost for iOS simulator/web
   // For physical device, use actual IP
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  static String get baseUrl {
+    if (apiIp.isNotEmpty && apiPort.isNotEmpty) {
+      return 'http://$apiIp:$apiPort';
+    }
+    return dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8000';
+  }
 
   // 사용자 정보 저장
   static User? _currentUser;
@@ -28,7 +50,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
       // 사용자 정보 저장
       _accessToken = data['access_token'];
       _refreshToken = data['refresh_token'];
@@ -58,7 +80,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
       // Backend returns {message: ..., user: ...}
       // Note: User might be null if email confirmation required, but typically returns user object
       if (data['user'] != null) {
@@ -100,7 +122,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return Mission.fromJson(jsonDecode(response.body));
+      return Mission.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
     } else {
       throw Exception('Failed to create mission: ${response.body}');
     }
@@ -139,10 +161,20 @@ class ApiService {
 
   // Fetch all missions
   static Future<List<Mission>> getMissions() async {
-    final response = await http.get(Uri.parse('$baseUrl/missions/'));
+    if (_accessToken == null) {
+      throw Exception('Not authenticated');
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/missions/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $_accessToken',
+      },
+    );
 
     if (response.statusCode == 200) {
-      List<dynamic> body = jsonDecode(response.body);
+      List<dynamic> body = jsonDecode(utf8.decode(response.bodyBytes));
       List<Mission> missions = body
           .map((dynamic item) => Mission.fromJson(item))
           .toList();
@@ -160,6 +192,17 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to complete mission: ${response.body}');
+    }
+  }
+
+  // Trigger manual capture of the current frame in backend
+  static Future<void> captureManualSnapshot(int missionId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/missions/$missionId/capture'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to capture manual snapshot: ${response.body}');
     }
   }
 

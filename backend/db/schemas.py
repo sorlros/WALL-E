@@ -9,8 +9,6 @@ class DetectionBase(BaseModel):
     confidence: float
     image_url: str
     bbox: Optional[List[Any]] = None # [x, y, w, h]
-    gps_lat: Optional[float] = None
-    gps_lng: Optional[float] = None
 
 class DetectionCreate(DetectionBase):
     pass
@@ -23,13 +21,16 @@ class Detection(DetectionBase):
     model_config = ConfigDict(from_attributes=True)
 
 class MissionBase(BaseModel):
-    title: str
+    name: str
     description: Optional[str] = None
     location_name: Optional[str] = None
     location_address: Optional[str] = None
+    gps_lat: Optional[float] = None
+    gps_lng: Optional[float] = None
 
 class MissionCreate(MissionBase):
-    pass
+    gps_lat: Optional[float] = None
+    gps_lng: Optional[float] = None
 
 class Mission(MissionBase):
     id: int

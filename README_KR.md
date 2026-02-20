@@ -149,4 +149,4 @@ flutter run -d R3CY30EEH2R
 - **모바일 스트리밍 최적화**: `flutter_mjpeg` 패키지 도입 및 스마트폰 대역폭을 고려한 백엔드 720p 30fps 리사이징으로 앱 내 블랙스크린 및 과부하 해결.
 - **MobileNetV3 중복 필터링 (Re-ID)**: YOLO 트래킹 ID의 추적 한계를 극복하기 위해, 임베딩 코사인 유사도 연산(80% Threshold, 10% Margin)을 통한 딥러닝 기반 재식별 시스템 구비.
 - **수동 캡처(Manual Capture) 연동**: 라이브 뷰 화면 내 플로팅 버튼(FAB)으로 사용자 수동 점검 기록 기능 및 식별 뱃지 추가.
-- **데이터 증강 전략 수립**: Albumentations 적용 (상하 흔들림, 잔상) 및 Hard Negative Mining(전선, 메지 등 함정 객체를 Background로 혼합) 기법 설계.
+- **데이터 증강 전략 수립**: Albumentations 적용 (상하 흔들림, 잔상) 및 Hard Negative Mining(전선, 메지 등 함정 객체를 Background로 혼합) 기법 설계. 

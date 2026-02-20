@@ -34,6 +34,7 @@ create table if not exists public.detections (
   mission_id bigint references public.missions(id) on delete cascade,
   image_url text,
   label text,
+  is_manual boolean default false,
   confidence float,
   bbox jsonb, -- Efficient JSON storage for bounding boxes [x, y, w, h]
   created_at timestamp with time zone default timezone('utc'::text, now())

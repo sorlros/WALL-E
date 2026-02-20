@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON, BigInteger
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON, BigInteger, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime
@@ -71,6 +71,9 @@ class Detection(Base):
     
     # Bounding Box: [x, y, w, h]
     bbox = Column(JSONB, nullable=True)
+    
+    # is_manual: True if user manually clicked capture, False if AI auto-saved
+    is_manual = Column(Boolean, default=False)
     
     # gps_lat, gps_lng removed (moved to Mission)
     

@@ -9,7 +9,7 @@
 
 ## 🏗️ System Architecture
 
-Video captured by the drone is streamed to the user's smartphone (Flutter app), while a backend video server acts as the intermediary, handling real-time AI analysis and duplicate filtering.
+Video captured by the drone is streamed to the user's smartphone (Flutter app), while a backend video server acts as the intermediary, handling real-time AI analysis and duplicate filtering. 
 
 ```mermaid
 graph TD

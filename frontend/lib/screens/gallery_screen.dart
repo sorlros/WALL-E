@@ -52,9 +52,7 @@ class GalleryScreen extends StatelessWidget {
             child: Row(
               children: [
                 _buildFilterChip('전체 미션', isSelected: true),
-                _buildFilterChip('오늘'),
-                _buildFilterChip('높은 신뢰도'),
-                _buildFilterChip('위치'),
+                _buildFilterChip('높은 신뢰도순'),
               ],
             ),
           ),

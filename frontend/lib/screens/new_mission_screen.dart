@@ -14,6 +14,31 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
   final TextEditingController _missionNameController = TextEditingController();
   final TextEditingController _memoController = TextEditingController();
   bool _isLoading = false;
+  double? _lat;
+  double? _lng;
+  // TODO: Secure this key (move to .env or backend proxy in production)
+  final String _googleMapsApiKey = "AIzaSyDcc3bQi6-UTKk2YKnq66k62chIqdiCn0I";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocation();
+  }
+
+  Future<void> _fetchLocation() async {
+    try {
+      Position position = await _determinePosition();
+      if (mounted) {
+        setState(() {
+          _lat = position.latitude;
+          _lng = position.longitude;
+        });
+        print('📍 Current Location: $_lat, $_lng');
+      }
+    } catch (e) {
+      print("Error getting location: $e");
+    }
+  }
 
   @override
   void dispose() {
@@ -42,7 +67,13 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
       Position position = await _determinePosition();
       lat = position.latitude;
       lng = position.longitude;
-      print('📍 Mission Start Location: $lat, $lng');
+      print('📍 Mission GPS 위치 정보: $lat, $lng');
+
+      // Use cached location if available and determinePosition failed or wasn't called again
+      if (lat == null && _lat != null) {
+        lat = _lat;
+        lng = _lng;
+      }
     } catch (e) {
       print("Could not get location: $e");
       // Proceed without location if fails (or show error)
@@ -144,7 +175,7 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
                             ),
                           ),
                           Text(
-                            'Falcon-X 연결됨',
+                            'Phantom4-Pro 연결됨',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -196,7 +227,7 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
                     controller: _missionNameController,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: '예: 현장 점검 - 7구역',
+                      hintText: '예: 에듀타운로 84 - intel gonuai 건물 외벽',
                       hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: const Color(0xFF101622),
@@ -219,7 +250,7 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
                     style: const TextStyle(color: Colors.white),
                     maxLines: 3,
                     decoration: InputDecoration(
-                      hintText: '비행 메모 또는 특정 균열 감지 영역을 추가하세요...',
+                      hintText: '특이사항 및 메모 내용',
                       hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: const Color(0xFF101622),
@@ -259,15 +290,18 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
               decoration: BoxDecoration(
                 color: Colors.grey[800],
                 borderRadius: BorderRadius.circular(12),
-                image: const DecorationImage(
+                image: DecorationImage(
                   image: NetworkImage(
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuBIzUDzs2Uo00ojZmr_7AjsCDA5p7MxkkOFpXWHKWCVrO3XjkChmKRSy1Ney79cCHB09I-PWNg_p5Y_U04ROZ5CqA46CLvFfGmsaWeuvK1vyIaarxvUXvFypb1H3yfDgBz1J4iLHNI62_PjCopfJhFB8nKiB71HF9dab0nn5wmKxKVjLVPOphfZc70ZWH1m0XptQ_c7IhYoB-Vo-vgW7v-_cjb8XQrrKMhBrc5mLdaAf_2vTW_SoyRPMSlEEVnUUk8WIMN9IaSnuf0',
+                    (_lat != null && _lng != null)
+                        ? 'https://maps.googleapis.com/maps/api/staticmap?center=$_lat,$_lng&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C$_lat,$_lng&key=$_googleMapsApiKey'
+                        : 'https://via.placeholder.com/600x300?text=Location+Loading...',
                   ),
                   fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                    Colors.black45,
-                    BlendMode.darken,
-                  ),
+                  // Removed ColorFilter to match the requested bright map style
+                  // colorFilter: ColorFilter.mode(
+                  //   Colors.black45,
+                  //   BlendMode.darken,
+                  // ),
                 ),
               ),
               child: Stack(
@@ -298,8 +332,8 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
                         children: [
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
+                            children: [
+                              const Text(
                                 '좌표',
                                 style: TextStyle(
                                   color: Colors.grey,
@@ -308,8 +342,10 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
                                 ),
                               ),
                               Text(
-                                '34.0522° N, 118.2437° W',
-                                style: TextStyle(
+                                (_lat != null && _lng != null)
+                                    ? '${_lat!.abs().toStringAsFixed(4)}° ${_lat! >= 0 ? 'N' : 'S'}, ${_lng!.abs().toStringAsFixed(4)}° ${_lng! >= 0 ? 'E' : 'W'}'
+                                    : '위치 정보를 가져오는 중...',
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
                                   fontFamily: 'monospace',

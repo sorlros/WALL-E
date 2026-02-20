@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
+from typing import Optional
 
 # Load env
 load_dotenv()
@@ -23,7 +24,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 class UserSignup(BaseModel):
     email: EmailStr
     password: str
-    name: str | None = None
+    name: Optional[str] = None
 
 
 class UserLogin(BaseModel):
@@ -175,3 +176,18 @@ def login(user: UserLogin):
                 status_code=400,
                 detail="로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.",
             )
+
+# Dependency to get current user
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    try:
+        # Verify token with Supabase
+        res = supabase.auth.get_user(token)
+        if not res.user:
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        return res.user
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication error: {str(e)}")

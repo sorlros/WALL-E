@@ -3,8 +3,14 @@ import 'screens/new_mission_screen.dart';
 import 'screens/gallery_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/api_service.dart';
 
-void main() {
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await ApiService.init(); // Initialize SharedPrefs
   runApp(const WallEApp());
 }
 
@@ -14,6 +20,7 @@ class WallEApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Wall-E Drone Inspection',
       theme: ThemeData(
         brightness: Brightness.dark,

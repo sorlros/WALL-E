@@ -58,6 +58,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF101622),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.grey),
+            onPressed: _showSettingsDialog,
+          ),
+        ],
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -184,6 +194,59 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showSettingsDialog() {
+    final ipController = TextEditingController(text: ApiService.apiIp);
+    final portController = TextEditingController(text: ApiService.apiPort);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('서버 설정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ipController,
+              decoration: const InputDecoration(
+                labelText: 'IP 주소',
+                hintText: '예: 172.30.1.14',
+              ),
+            ),
+            TextField(
+              controller: portController,
+              decoration: const InputDecoration(
+                labelText: '포트',
+                hintText: '예: 8000',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await ApiService.setServerConfig(
+                ipController.text,
+                portController.text,
+              );
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('서버 설정이 저장되었습니다.')),
+                );
+              }
+            },
+            child: const Text('저장'),
+          ),
+        ],
       ),
     );
   }

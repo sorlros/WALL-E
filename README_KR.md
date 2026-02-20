@@ -15,7 +15,7 @@
 
 | 역할 | 책임 (Responsibilities) | 주요 집중 분야 (Key Focus Areas) |
 |------|------------------|-----------------|
-| **Project Manager (PM)** | 제품 비전, 일정 관리, 문서화 | 사용자 스토리, 스프린트 계획, 기획서 작성 |
+| **Project Architecture (PA)** | 시스템 아키텍처, 기술 방향성 리딩, 문서화 | 아키텍처 설계, 기술 스택 선정, 시스템 통합 관리 |
 | **Backend Developer** | 서버 아키텍처, API, DB 설계 | FastAPI, Supabase(PostgreSQL), REST API, 데이터 무결성 |
 | **AI Model Developer** | 모델 학습 (YOLO), 최적화 | 데이터셋 증강(Albumentations), 모델 정확도(mAP), 실시간 추론 최적화 |
 | **Frontend Developer** | 모바일 앱 개발 (Flutter) | 실시간 스트리밍 뷰, 갤러리 UI, 상태 관리, 반응형 디자인 |
@@ -57,7 +57,8 @@
     *   **실시간 관제**: 드론 시점의 영상을 실시간으로 확인. 크랙 탐지 시 화면에 박스 표시.
     *   **미션 기록**: 비행 시작/종료 제어, 현장 위치 정보(건물명) 입력.
     *   **갤러리**: 탐지된 크랙 이미지 리스트 확인, 상세 보기 (바운딩 박스 On/Off).
-    *   **지도 연동 (예정)**: 탐지된 위치를 지도 위에 마커로 표시.
+    *   **지도 연동**: Google Maps Static API (Roadmap)를 활용한 미션 위치 시각화 및 GPS 좌표 표시.
+    *   **사용자 인증**: Supabase Auth 기반 로그인/회원가입 및 사용자별 데이터 격리.
 
 ### 4. 🗂 Data Pipeline Part
 데이터의 수집부터 가공, 저장까지의 흐름입니다.
@@ -83,7 +84,11 @@
 
 ### Infrastructure
 *   **DB/Auth/Storage**: Supabase (Cloud)
-*   **Streaming Server**: MediaMTX (RTMP/RTSP)
+*   **Streaming Server**: MediaMTX (RTMP/RTSP) - *현재 팀원 로컬 환경에서 구동 중*
+    *   **RTMP Port**: `1935` (영상 수신)
+    *   **HLS Port**: `8888` (영상 송출)
+    *   **API Port**: `9997` (서버 관리)
+    *   **Stream Route (경로)**: `rtmp://<Server-IP>:1935/live/drone`
 
 ---
 
@@ -96,6 +101,17 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+# 주요 설치 패키지 및 버전 (자동 설치됨)
+# fastapi==0.115.0
+# uvicorn==0.32.0 - ASGI 서버
+# sqlalchemy==2.0.38 - ORM
+# psycopg==3.3.2 - PostgreSQL 드라이버
+# supabase==2.28.0 - 데이터베이스 클라이언트
+# ultralytics==8.3.0 - YOLOv11 모델
+# opencv-python==4.10.0.84 - 컴퓨터 비전 처리
+# python-dotenv==1.0.1 - 환경변수 관리
+# pydantic==2.12.5 - 데이터 검증
 ```
 
 #### Database (Supabase)
@@ -107,19 +123,35 @@ RTMP_URL=rtmp://localhost:1935/live/test
 
 ### 2. 실행
 #### RTMP 서버 (MediaMTX)
-```bash
-brew services start mediamtx   # Mac
-# 또는 실행 파일 직접 실행
+```드론앱에서 접속하는 서버주소
+`rtmp://<Server-IP>:1935/live/drone`
 ```
 
 #### Backend 서버
 ```bash
-uvicorn backend.main:app --reload
+# backend 경로 진입 이후
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 #### Frontend 앱
-```bash
-cd frontend
-flutter pub get
 flutter run
 ```
+
+---
+
+## 🚀 프로젝트 현황 및 최근 업데이트 (2026.02.17)
+
+### ✅ 완료된 기능 (Completed)
+- **사용자 인증 (Auth)**: Supabase 연동 로그인/회원가입 구현 완료.
+- **한글 지원 강화**: 한글 사용자 이름 및 데이터의 UTF-8 인코딩 깨짐 현상 해결.
+- **지도 연동 (Google Maps)**:
+    - 정적 이미지 대신 **Google Maps Static API** 연동.
+    - **Roadmap (일반 지도)** 스타일 적용으로 시인성 개선.
+    - 실시간 GPS 좌표 표시 형식 개선 (N/S, E/W 표기).
+- **데이터 격리**: 로그인한 사용자의 미션 데이터만 보이도록 백엔드/프론트엔드 필터링 적용.
+- **Android 설정**:
+    - 패키지명 변경: `com.company.walle`
+    - 위치 권한 및 API 키 설정 완료.
+- **문서화 (Documentation)**:
+    - 역할 명칭 변경: PM → **PA (Project Architecture)** 로 변경 및 R&R 재정의.
+    - **프로젝트 플로우(Project Flow)** 및 **핵심 코드 스니펫** 문서 추가.

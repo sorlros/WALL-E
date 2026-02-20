@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON, BigInteger
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime
 import uuid
 from .database import Base
@@ -17,6 +17,7 @@ class Profile(Base):
     username = Column(Text, nullable=True)
     full_name = Column(Text, nullable=True)
     avatar_url = Column(Text, nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     # Relationship
@@ -42,9 +43,21 @@ class Mission(Base):
     
     captured_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    
+    # GPS Info (Moved from Detection)
+    gps_lat = Column(Float, nullable=True)
+    gps_lng = Column(Float, nullable=True)
 
     user = relationship("Profile", back_populates="missions")
     detections = relationship("Detection", back_populates="mission")
+
+    @property
+    def name(self):
+        return self.title
+
+    @name.setter
+    def name(self, value):
+        self.title = value
 
 class Detection(Base):
     __tablename__ = "detections"
@@ -57,10 +70,9 @@ class Detection(Base):
     confidence = Column(Float)
     
     # Bounding Box: [x, y, w, h]
-    bbox = Column(JSON, nullable=True)
+    bbox = Column(JSONB, nullable=True)
     
-    gps_lat = Column(Float, nullable=True)
-    gps_lng = Column(Float, nullable=True)
+    # gps_lat, gps_lng removed (moved to Mission)
     
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 

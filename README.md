@@ -19,7 +19,7 @@ graph TD
     DB[("🐘 Database<br/>(Supabase PostgreSQL)")]
     App["📱 Client App (Flutter)<br/>[Android/iOS]"]
 
-    Drone -- "1. Raw Live Stream<br/>(1080p, 60fps)" --> RTMP
+    Drone -- "1. Raw Live Stream<br/>(720p, 30fps)" --> RTMP
     RTMP -- "2. Video Stream Polling" --> Backend
     Backend -- "4. AI Inference & Results<br/>(Mission, Detections)" --> DB
     Backend -- "3. Mobile-Optimized Stream<br/>(MJPEG, 720p 30fps)" --> App

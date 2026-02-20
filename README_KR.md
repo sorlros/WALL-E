@@ -19,7 +19,7 @@ graph TD
     DB[("🐘 데이터베이스<br/>(Supabase PostgreSQL)")]
     App["📱 클라이언트 앱 (Flutter)<br/>[Android/iOS]"]
 
-    Drone -- "1. 원본 영상 송출<br/>(1080p, 60fps)" --> RTMP
+    Drone -- "1. 원본 영상 송출<br/>(720p, 30fps)" --> RTMP
     RTMP -- "2. 비디오 스트림 풀링" --> Backend
     Backend -- "4. AI 추론 및 처리 결과 저장<br/>(Mission, Detections)" --> DB
     Backend -- "3. 모바일 최적화 송출<br/>(MJPEG, 720p 30fps)" --> App

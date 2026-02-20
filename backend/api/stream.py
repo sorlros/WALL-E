@@ -1,6 +1,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
-from core.stream_manager import stream_manager
+# from core.stream_manager import stream_manager
+from core.stream_manager_ai_only import stream_manager
 import json
 import asyncio
 import logging

@@ -97,6 +97,23 @@ def complete_mission(mission_id: int, db: Session = Depends(get_db)):
         
     return mission
 
+@router.post("/{mission_id}/capture")
+def trigger_manual_capture(mission_id: int, db: Session = Depends(get_db)):
+    """API endpoint to trigger a manual snapshot of the current stream."""
+    mission = db.query(models.Mission).filter(models.Mission.id == mission_id).first()
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+        
+    if not stream_manager_instance or not stream_manager_instance.is_running:
+        raise HTTPException(status_code=500, detail="StreamManager is not running. Start the stream first.")
+        
+    success, msg = stream_manager_instance.manual_capture(mission_id)
+    
+    if success:
+        return {"success": True, "message": msg}
+    else:
+        raise HTTPException(status_code=500, detail=msg)
+
 @router.get("/", response_model=List[schemas.Mission])
 def read_missions(
     skip: int = 0, 

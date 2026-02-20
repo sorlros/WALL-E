@@ -123,7 +123,7 @@ class StreamManager:
         """Background thread to handle connection, reading frames, and AI inference."""
         logger.info("Starting capture loop...")
         
-        frame_interval = 3  # Run AI every 3 frames
+        frame_interval = 6  # Run AI every 6 frames (Optimized for 60 FPS Pass-through)
         frame_count = 0
         
         # Cache for the last detection results (bounding boxes)
@@ -137,27 +137,21 @@ class StreamManager:
             if self.cap is None or not self.cap.isOpened():
                 try:
                     logger.info(f"Connecting to stream: {self.rtmp_url}")
-                    # Mac-friendly OpenCV flags for RTMP
+                    # Revert to the original working method for this specific environment
                     if isinstance(self.rtmp_url, str):
-                        # Try to use FFmpeg but fallback safely, or AVFOUNDATION
-                        import platform
-                        if platform.system() == 'Darwin':
-                            # Give AVFoundation priority, fallback to ANY
-                            self.cap = cv2.VideoCapture(self.rtmp_url, cv2.CAP_ANY)
-                        else:
-                            self.cap = cv2.VideoCapture(self.rtmp_url, cv2.CAP_FFMPEG)
+                        self.cap = cv2.VideoCapture(self.rtmp_url)
                     else:
                         self.cap = cv2.VideoCapture(self.rtmp_url)
-                    
+                        
                     if not self.cap.isOpened():
                         logger.error(f"Failed to open stream. Retrying in 2s...")
                         time.sleep(2)
                         continue
                     
-                    # Request specific resolution and FPS (1920x1080 @ 30fps)
+                    # Request specific resolution and FPS (1920x1080 @ 60fps)
                     self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
                     self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-                    self.cap.set(cv2.CAP_PROP_FPS, 30)
+                    self.cap.set(cv2.CAP_PROP_FPS, 60)
 
                     # Buffer size optimization for low latency
                     self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
@@ -196,10 +190,10 @@ class StreamManager:
                     detection_time = time.time()
                     inference_ms = (detection_time - start_time) * 1000
                     
-                    # Performance Profiling (Every 30 frames)
-                    if frame_count % 30 == 0:
+                    # Performance Profiling (Every 60 frames)
+                    if frame_count % 60 == 0:
                         elapsed = time.time() - fps_start_time
-                        actual_fps = 30 / elapsed if elapsed > 0 else 0
+                        actual_fps = 60 / elapsed if elapsed > 0 else 0
                         
                         # Get YOLO inference time from results if available, else approximate
                         yolo_speed = results[0].speed['inference'] if results else inference_ms

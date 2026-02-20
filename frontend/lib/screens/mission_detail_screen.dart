@@ -271,22 +271,25 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      detection.label,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      detection.isManual ? '수동 캡처 🙋‍♂️' : detection.label,
+                      style: TextStyle(
+                        color: detection.isManual
+                            ? Colors.greenAccent
+                            : Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
                     ),
-                    Text(
-                      '${(detection.confidence * 100).toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        color: (detection.confidence > 0.7)
-                            ? Colors.red
-                            : Colors.orange,
-                        fontSize: 10,
+                    if (!detection.isManual)
+                      Text(
+                        '${(detection.confidence * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          color: (detection.confidence > 0.7)
+                              ? Colors.red
+                              : Colors.orange,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -388,7 +391,9 @@ class _DetectionFullScreenViewState extends State<DetectionFullScreenView> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            currentDetection.label,
+                            currentDetection.isManual
+                                ? '수동 캡처 🙋‍♂️'
+                                : currentDetection.label,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,

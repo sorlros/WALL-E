@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'live_streaming_screen.dart';
+// import 'live_streaming_screen.dart';
+import 'live_streaming_screen_ai_mjpeg.dart';
 import '../services/api_service.dart';
 
 class NewMissionScreen extends StatefulWidget {
@@ -93,7 +94,8 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
 
       Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(
-          builder: (context) => LiveStreamingScreen(missionId: mission.id),
+          builder: (context) =>
+              LiveStreamingScreenAiOnly(missionId: mission.id),
         ),
       );
     } catch (e) {

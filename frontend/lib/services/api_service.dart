@@ -195,6 +195,17 @@ class ApiService {
     }
   }
 
+  // Trigger manual capture of the current frame in backend
+  static Future<void> captureManualSnapshot(int missionId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/missions/$missionId/capture'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to capture manual snapshot: ${response.body}');
+    }
+  }
+
   // Update GPS for a specific detection
   static Future<void> updateDetectionGps(
     int detectionId,

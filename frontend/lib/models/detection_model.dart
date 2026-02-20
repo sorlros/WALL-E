@@ -6,6 +6,7 @@ class Detection {
   final double confidence;
   final List<dynamic>? bbox;
   final DateTime createdAt;
+  final bool isManual;
 
   Detection({
     required this.id,
@@ -15,6 +16,7 @@ class Detection {
     required this.confidence,
     this.bbox,
     required this.createdAt,
+    this.isManual = false,
   });
 
   factory Detection.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class Detection {
       confidence: json['confidence'].toDouble(),
       bbox: json['bbox'],
       createdAt: DateTime.parse(json['created_at']),
+      isManual: json['is_manual'] ?? false,
     );
   }
 
@@ -38,6 +41,7 @@ class Detection {
       'confidence': confidence,
       'bbox': bbox,
       'created_at': createdAt.toIso8601String(),
+      'is_manual': isManual,
     };
   }
 }

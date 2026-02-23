@@ -12,40 +12,39 @@ from pathlib import Path
 # 🚁 드론 비행 시나리오 최적화 증강 조건 (V15: Vertical & Stable Focus)
 # --------------------------------------------------------------------------
 drone_transform = A.Compose([
-    # 📐 1. 기하학적 변화 및 왜곡 (Geometry & Distortions)
+    # 📐 1. 기하학적 변화 (Geometry) - 창문 형태 보존을 위해 왜곡 최소화
     A.HorizontalFlip(p=0.5), # 좌우 반전
-    A.ShiftScaleRotate(
-        shift_limit_x=0.05,    # 수평 이동 약간 증가
-        shift_limit_y=0.15,    # 수직 이동 강조
-        scale_limit=0.15,      # 스케일 범위 확장
-        rotate_limit=20,       # 회전 각도 15 -> 20
-        border_mode=cv2.BORDER_CONSTANT,
-        p=0.7
-    ),
-    A.OneOf([
-        A.GridDistortion(distort_limit=0.1, p=1.0),
-        A.OpticalDistortion(distort_limit=0.1, shift_limit=0.1, p=1.0), # 🛠 신규: 렌즈 왜곡
-        A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=1.0), # 🛠 신규: 표면 굴곡 시뮬레이션
-    ], p=0.3),
+    A.RandomResizedCrop(size=(640, 640), scale=(0.8, 1.0), p=0.3), # 🛠 Window: 형태 유지를 위해 스케일 범위 축소
+    A.Affine(
+        translate_percent={"x": (-0.05, 0.05), "y": (-0.05, 0.05)},
+        scale=(0.95, 1.05),
+        rotate=(-10, 10), # 🛠 Window: 회전 제한
+        p=0.4
+    ), # 🛠 V4: cval 제거 (일부 버전 호환성)
     
-    # 💨 2. 촬영 환경 및 가려짐 (Camera Effects & Occlusion)
+    # 💨 2. 촬영 환경 (Camera Effects)
     A.OneOf([
-        A.MotionBlur(blur_limit=(3, 7), p=1.0),
-        A.GaussianBlur(blur_limit=(3, 7), p=1.0),
-    ], p=0.3), # 균열 가시성을 위해 확률 소폭 감소
-    A.CoarseDropout(max_holes=8, max_height=32, max_width=32, p=0.1), # 🛠 신규: 균열 일부 가려짐 시뮬레이션
+        A.MotionBlur(blur_limit=(3, 5), p=1.0),
+        A.GaussianBlur(blur_limit=(3, 5), p=1.0),
+    ], p=0.1), # 🛠 Window: 블러 확률 낮게 유지
+    A.CoarseDropout(
+        num_holes_range=(1, 4), 
+        hole_height_range=(16, 32), 
+        hole_width_range=(16, 32), 
+        p=0.1
+    ),
 
-    # ☀️ 3. 조명 변화 및 노출 (Lighting & Exposure)
-    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.4),
-    A.RandomGamma(gamma_limit=(80, 120), p=0.3), # 🛠 신규: 자연스러운 노출 변화
+    # ☀️ 3. 조명 및 반사 (Lighting & Reflection) - 창문 유리의 핵심 요소
+    A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5),
+    A.RandomGamma(gamma_limit=(70, 130), p=0.4),
     A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.2),
-    A.ISONoise(color_shift=(0.01, 0.02), intensity=(0.1, 0.3), p=0.2),
+    A.ISONoise(color_shift=(0.01, 0.02), intensity=(0.1, 0.4), p=0.2),
 
-    # 🩹 4. 미세 균열 가시성 강화 (Fixed Strategy)
+    # 🩹 4. 대비 및 선명도 (Contrast & Sharpness)
     A.OneOf([
         A.Sharpen(alpha=(0.1, 0.3), p=1.0),
-        A.CLAHE(clip_limit=2.0, p=1.0),
-    ], p=0.3), # 강도를 약하게 하여 자연스러움 유지
+        A.CLAHE(clip_limit=3.0, p=1.0),
+    ], p=0.4),
 ], bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels'], min_visibility=0.1, min_area=1))
 
 def sanitize_and_save_labels(lbl_src, lbl_dst, output_name):
@@ -155,7 +154,9 @@ def process_dataset(input_root, output_root, val_ratio=0.2):
     for split_dir in ['train', 'valid', 'test']:
         img_dir = input_root / split_dir / "images"
         if img_dir.exists():
-            for img_path in img_dir.glob("*.jpg"):
+            print(f"Scanning files in {split_dir}...")
+            image_files = list(img_dir.glob("*.jpg"))
+            for img_path in tqdm(image_files, desc=f"Scanning {split_dir}"):
                 lbl_path = img_path.parent.parent / "labels" / f"{img_path.stem}.txt"
                 
                 # 라벨 파일 존재 여부 및 내용 확인하여 결함/배경 분류
@@ -174,11 +175,11 @@ def process_dataset(input_root, output_root, val_ratio=0.2):
         print(f"Error: No defect images found in {input_root}")
         return
 
-    # 🛠 V17: Background Capping (결함 대비 10%로 제한)
+    # 🛠 V5: Background Capping 확대 (20% -> 40% - 오탐지(False Positive) 방지 강화)
     random.seed(42)
-    max_bg_count = int(len(defect_imgs) * 0.1)
+    max_bg_count = int(len(defect_imgs) * 0.4)
     if len(bg_imgs) > max_bg_count:
-        print(f"V17 Pipeline: Reducing backgrounds from {len(bg_imgs)} to {max_bg_count} (10% of defects)")
+        print(f"V5 Pipeline: Reducing backgrounds from {len(bg_imgs)} to {max_bg_count} (40% of defects)")
         bg_imgs = random.sample(bg_imgs, max_bg_count)
     
     all_files = defect_imgs + bg_imgs
@@ -187,7 +188,7 @@ def process_dataset(input_root, output_root, val_ratio=0.2):
     split_idx = int(len(all_files) * (1 - val_ratio))
     split_data = {'train': all_files[:split_idx], 'val': all_files[split_idx:]}
 
-    print(f"V17 Pipeline: Total({len(all_files)}), Defect({len(defect_imgs)}), BG({len(bg_imgs)})")
+    print(f"V5 Pipeline: Total({len(all_files)}), Defect({len(defect_imgs)}), BG({len(bg_imgs)})")
 
     for split, files in split_data.items():
         img_dst, lbl_dst = output_root / split / 'images', output_root / split / 'labels'
@@ -200,16 +201,17 @@ def process_dataset(input_root, output_root, val_ratio=0.2):
             sanitize_and_save_labels(str(lbl_path), str(lbl_dst), img_path.stem)
             
             if split == 'train':
-                for i in range(1, 4):
+                # 🛠 Window: 데이터 양 최적화 (multiplier = 1)
+                for i in range(1, 2):
                     augment_yolo(str(img_path), str(lbl_path), str(img_dst), str(lbl_dst), 
-                                 drone_transform, suffix=f"v17_{i}")
+                                 drone_transform, suffix=f"w1_{i}")
 
     # data.yaml 생성
     yaml_data = {
-        'path': '/content/refined_dataset', 
+        'path': '/content/window_refined', 
         'train': 'train/images', 
         'val': 'val/images', 
-        'names': {0: 'crack'}
+        'names': {0: 'window'}
         }
     with open(output_root / 'data.yaml', 'w') as f:
         yaml.dump(yaml_data, f, default_flow_style=False)
@@ -217,9 +219,9 @@ def process_dataset(input_root, output_root, val_ratio=0.2):
 
 if __name__ == "__main__":
     BASE_DIR = Path(__file__).resolve().parent.parent
-    # 📥 사용자 제공 신규 데이터셋 경로 반영 (v5i 반영)
-    INPUT_DIR = BASE_DIR / "datasets" / "defect_review.v6i.yolov8"
-    OUTPUT_DIR = BASE_DIR / "datasets" / "refined_dataset"
+    # 📥 창문 데이터셋 경로 반영
+    INPUT_DIR = BASE_DIR / "datasets" / "window.v1i.yolov8"
+    OUTPUT_DIR = BASE_DIR / "datasets" / "window_refined"
     if INPUT_DIR.exists():
         process_dataset(INPUT_DIR, OUTPUT_DIR)
     else:

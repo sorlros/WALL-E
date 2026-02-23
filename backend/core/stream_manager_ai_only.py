@@ -179,6 +179,9 @@ class StreamManager:
                     
                 boxes = results[0].boxes
                 if boxes:
+                    # Keep track of the highest similarity found in this frame (for UI)
+                    best_sim_for_ui = 0.0
+                    
                     # Auto-Save Logic (Loop through ALL detections)
                     if self.active_mission_id:
                         if boxes.id is not None:
@@ -232,6 +235,10 @@ class StreamManager:
                                                 if detection:
                                                     self.reid_manager.add_to_cache(self.active_mission_id, detection.id, embedding)
                                                     logger.info(f"🆕 [Re-ID Saved] New unique crack! Sim was {max_sim:.2f}. ID: {detection.id}")
+                                            
+                                            # Update the highest similarity seen in this frame to be sent to UI
+                                            if max_sim > best_sim_for_ui:
+                                                best_sim_for_ui = max_sim
 
                     # Real-time WebSocket Logic (Send BEST detection for UI)
                     if self.on_detection:
@@ -249,7 +256,8 @@ class StreamManager:
                             "timestamp": time.time(),
                             "count": len(boxes), 
                             "track_id": track_id,
-                            "detection_id": None 
+                            "detection_id": None,
+                            "reid_sim": float(best_sim_for_ui)
                         }
                         self.on_detection(detection_data)
             else:

@@ -120,7 +120,9 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
               padding: const EdgeInsets.all(8),
               color: Colors.black54,
               child: Text(
-                'Saved: $_savedCount\nLast: ${_detections.isNotEmpty ? "${_detections[0]['label']} (${(_detections[0]['confidence'] * 100).toInt()}%)" : "None"}',
+                'Saved: $_savedCount\n'
+                'Last: ${_detections.isNotEmpty ? "${_detections[0]['label']} (${(_detections[0]['confidence'] * 100).toInt()}%)" : "None"}\n'
+                'Re-ID Sim: ${_detections.isNotEmpty && _detections[0]['reid_sim'] != null ? "${(_detections[0]['reid_sim'] * 100).toStringAsFixed(1)}%" : "-"}',
                 style: const TextStyle(color: Colors.yellow, fontSize: 16),
               ),
             ),

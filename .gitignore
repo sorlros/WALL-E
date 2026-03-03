@@ -20,6 +20,7 @@ build/
 datasets/
 backend/models/*.pt
 backend/models/*.mlmodel
+videos/
 
 # Docs
 walkthrough/*

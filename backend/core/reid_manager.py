@@ -22,7 +22,7 @@ class ReIDManager:
         self.threshold = threshold
         self.max_cache_size = max_cache_size
         
-        # In-memory cache: Dictionary mapping mission_id -> deque of (detection_id, embedding_vector)
+        # In-memory cache: Dictionary mapping mission_id -> deque of (detection_id, embedding_vector, frame_id, track_id)
         self.embedding_cache = {} 
         
         # Determine device (CPU or MPS for Mac, CUDA for Nvidia)
@@ -105,34 +105,47 @@ class ReIDManager:
             return 0.0
         return float(np.dot(emb1, emb2))
 
-    def is_duplicate(self, mission_id: int, new_embedding: np.ndarray) -> Tuple[bool, float]:
+    def is_duplicate(self, mission_id: int, new_embedding: np.ndarray, frame_id: int, track_id: int) -> Tuple[bool, float, int]:
         """
         Checks if the new_embedding is a duplicate of any recently saved embeddings for the mission.
+        Incorporates Spatial & Temporal awareness to prevent false positives in the same frame.
         
         Returns:
-            (is_duplicate_boolean, max_similarity_score)
+            (is_duplicate_boolean, max_similarity_score, matched_detection_id)
         """
         if new_embedding is None:
-            return False, 0.0
+            return False, 0.0, None
             
         if mission_id not in self.embedding_cache:
             self.embedding_cache[mission_id] = deque(maxlen=self.max_cache_size)
-            return False, 0.0
+            return False, 0.0, None
             
         cache = self.embedding_cache[mission_id]
         max_sim = 0.0
+        matched_id = None
         
-        for _, cached_emb in cache:
+        for cached_detection_id, cached_emb, cached_frame_id, cached_track_id in cache:
+            # 1. Temporal filter: If YOLO ByteTrack ID is exactly the same, it's definitely the same object.
+            # No need to do cosine similarity.
+            if track_id is not None and cached_track_id == track_id:
+                return True, 1.0, cached_detection_id # 100% match by tracking ID
+            
+            # 2. Spatial filter: If the YOLO bounding box was found in the exact same frame (time), 
+            # it is physically impossible to be the same object even if they look identical. Skip comparison.
+            if cached_frame_id == frame_id:
+                continue
+                
             sim = self.calculate_similarity(new_embedding, cached_emb)
             if sim > max_sim:
                 max_sim = sim
+                matched_id = cached_detection_id
                 
         is_dup = max_sim >= self.threshold
-        return is_dup, max_sim
+        return is_dup, max_sim, matched_id if is_dup else None
 
-    def add_to_cache(self, mission_id: int, detection_id: int, embedding: np.ndarray):
+    def add_to_cache(self, mission_id: int, detection_id: int, embedding: np.ndarray, frame_id: int, track_id: int):
         """
-        Adds a new embedding to the cache for future comparisons.
+        Adds a new embedding and its spatial/temporal metadata to the cache for future comparisons.
         """
         if embedding is None:
             return
@@ -140,7 +153,7 @@ class ReIDManager:
         if mission_id not in self.embedding_cache:
             self.embedding_cache[mission_id] = deque(maxlen=self.max_cache_size)
             
-        self.embedding_cache[mission_id].append((detection_id, embedding))
+        self.embedding_cache[mission_id].append((detection_id, embedding, frame_id, track_id))
         
     def clear_mission_cache(self, mission_id: int):
         """

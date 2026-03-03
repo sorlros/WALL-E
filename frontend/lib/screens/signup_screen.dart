@@ -45,19 +45,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('회원가입 완료! 로그인해주세요.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해 주세요.')),
+        );
         Navigator.of(context).pop(); // Go back to Login
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '회원가입 실패: ${e.toString().replaceAll('Exception:', '')}',
-            ),
+          const SnackBar(
+            content: Text('회원가입에 실패했습니다. 네트워크 상태 및 입력 정보를 확인해 주세요.'),
             backgroundColor: Colors.red,
           ),
         );

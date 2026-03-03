@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
+import '../widgets/option_c_loading.dart';
 
 class LiveStreamingScreen extends StatefulWidget {
   final int? missionId;
@@ -162,9 +163,7 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                     ),
                   ),
                 )
-              : const Center(
-                  child: CircularProgressIndicator(color: Colors.blue),
-                ),
+              : const Center(child: OptionCLoading()),
 
           // Debug Overlay (Temporary)
           Positioned(
@@ -441,14 +440,19 @@ class _LiveStreamingScreenState extends State<LiveStreamingScreen> {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('미션이 종료되었습니다.'),
+                                      content: Text('점검이 안전하게 종료되었습니다.'),
                                     ),
                                   );
                                 }
                               } catch (e) {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('미션 종료 오류: $e')),
+                                    const SnackBar(
+                                      content: Text(
+                                        '종료 중 문제가 발생했습니다. 네트워크 상태를 확인해 주세요.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
                                   );
                                 }
                               }

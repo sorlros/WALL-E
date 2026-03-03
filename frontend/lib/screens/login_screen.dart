@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import '../services/api_service.dart';
 import '../main.dart'; // To navigate to home after login
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,9 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '로그인 실패: ${e.toString().replaceAll('Exception:', '')}',
-            ),
+            content: const Text('로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해 주세요.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -75,28 +74,41 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Logo / Title Section
-              const Icon(
-                Icons.travel_explore, // Wall-E like icon
-                size: 80,
-                color: Color(0xFF135BEC),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Wall-E',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.5,
+              // 1. Logo Section
+              Transform.translate(
+                offset: const Offset(0, -5),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  height: 120, // Adjust size as needed
+                  // If logo.png has no padding, it will show fully.
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.error_outline,
+                      size: 80,
+                      color: Colors.red,
+                    ); // Fallback if logo not found
+                  },
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+              Text(
+                'WALL-E',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.orbitron(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 4.0,
+                  shadows: [
+                    const Shadow(color: Colors.cyanAccent, blurRadius: 12.0),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               const Text(
                 'AI 기반 외벽 균열 점검 시스템',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: Colors.grey),
               ),
               const SizedBox(height: 48),
 
@@ -240,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
               if (mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('서버 설정이 저장되었습니다.')),
+                  const SnackBar(content: Text('네트워크 서버 설정이 안전하게 저장되었습니다.')),
                 );
               }
             },

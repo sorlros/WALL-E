@@ -21,10 +21,19 @@ graph TD
 
     Drone -- "1. Raw Live Stream<br/>(720p, 30fps)" --> RTMP
     RTMP -- "2. Video Stream Polling" --> Backend
-    Backend -- "4. AI Inference & Results<br/>(Mission, Detections)" --> DB
-    Backend -- "3. Mobile-Optimized Stream<br/>(MJPEG, 720p 30fps)" --> App
-    App -- "5. API Requests (Manual Capture)" --> Backend
-    App -- "6. Load Gallery Images" --> DB
+    
+    subgraph "AI Engine (3-Track Async)"
+        Backend -- "3a. Crack Detection (YOLOv11n)" --> AI
+        Backend -- "3b. Privacy Blur (Window Model)" --> AI
+        AI -- "3c. Re-ID Deduplication" --> AI
+    end
+
+    Backend -- "4. AI Results & Images<br/>(Supabase Auth context)" --> DB
+    Backend -- "5. Mobile-Optimized Stream<br/>(MJPEG with Burn-in BBox)" --> App
+    Backend -- "6. Real-time Metadata<br/>(WebSocket/JSON)" --> App
+    
+    App -- "7. Manual Capture Requests" --> Backend
+    App -- "8. Load Gallery & History" --> DB
 ```
 
 ---
@@ -45,21 +54,25 @@ graph TD
 ## 📅 Core Project Pipeline
 
 ### 1. 🧠 AI & Computer Vision Part
-The core engine for real-time crack detection from drone footage and duplicate prevention.
-*   **Object Detection**: YOLOv11n (Nano) - Ultra-fast real-time object recognition.
+The core engine for real-time inspection, duplicate prevention, and privacy protection.
+*   **Multi-Model Detection Pipeline**:
+    *   **Crack Detection**: YOLOv11n (Nano) - Optimized for ultra-fast structural anomaly recognition.
+    *   **Privacy Protection**: Built-in **Window Detection** model. Automatically applies Gaussian Blur (Pixel-level) to building interiors to protect resident privacy during flight.
 *   **Duplicate Filtering (Re-Identification)**: Powered by the `MobileNetV3-small` model.
-    *   Prevents storing multiple images of the same crack caused by drone shaking.
-    *   Crops the crack, converts it to a 576-dimensional embedding, and compares it with recent cache using **Cosine Similarity**. If it matches >= 80%, it is discarded (Dropped).
-*   **Dataset Augmentation**:
-    *   Uses `Albumentations` to perfectly simulate vertical flight shaking (Shift), Motion Blur, and backlight.
-    *   Applies **Hard Negative Mining** by aggressively treating fake cracks (e.g., wires, tile joints) as Background files to drastically lower false positives.
+    *   Prevents storing multiple images of the same crack caused by drone shaking or hovering.
+    - Compares 576-dimensional embeddings using **Cosine Similarity** (80% Threshold).
+*   **Advanced Augmentation (Albumentations)**: 
+    - Simulates vertical flight shaking, Motion Blur, and aggressive sunlight.
+    - Uses **Hard Negative Mining** to treat wires and tile joints as Background to minimize False Positives.
 
-### 2. ⚙️ Backend & Architecture Part
-A Zero-Latency 3-Track Asynchronous Architecture that entirely eliminates thread bottlenecks.
-*   **Thread 1 (Camera Reception)**: Fully dedicated to dumping the latest drone frames into memory, ignoring all encoding/AI operations to defend the buffer.
-*   **Thread 2 (AI Inference)**: "Steals" the latest frame to run YOLO inference + update BBox + verify Re-ID filter + asynchronously save manual captures.
-*   **Thread 3 (Mobile Streaming)**: Merges the clean photo from Thread 1 with the coordinates from Thread 2, resizes it to 720p 30FPS for optimization, and shoots it as MJPEG to the smartphone.
-*   **Database & Storage**: Supabase (PostgreSQL) - Unifies Detection history, Auth, and Image Storage.
+### 2. ⚙️ Backend & 3-Track Architecture
+A Zero-Latency architecture designed for multi-model concurrent inference.
+*   **Thread 1 (Reception)**: Dedicated to dumping raw drone frames into a high-speed buffer.
+*   **Thread 2 (Inference)**: Orchesrates the AI Pipeline (Crack Detect -> Window Blur -> ReID -> DB Save).
+*   **Thread 3 (Broadcast)**:
+    - **Video Channel**: Streams MJPEG (720p 30FPS) with BBox burn-in for instant user feedback.
+    - **Metadata Channel**: Dispatches real-time JSON detection alerts via **WebSocket** to drive the Flutter UI state.
+*   **Storage**: Supabase handles all structural data, authentication, and secure image hosting.
 
 ### 3. 📱 Frontend (App) Part
 The interface for users to monitor zero-delay video and control drone inspections.
@@ -151,3 +164,10 @@ flutter run
 - **MobileNetV3 Deduplication (Re-ID)**: Mitigated multi-save tracking limitation scenarios caused by drone wobble using embedding Cosine Similarity (80% Threshold / 10% Margin).
 - **Manual Capture Integration**: Granted users unilateral snapshot power via a live frontend FAB, tagging them in DB as explicit "Manual Captures".
 - **Augmentation Pipeline Plan**: Drafted robust data strategies detailing vertical-shift focus and Hard Negative Mining (e.g. electrical wires, concrete joints) via Albumentations.
+
+### 📍 2026.02.21 ~ 02.24 (Phase 4: Multi-Model Integration & Results)
+- **Privacy Mode (Window Model)**: Integrated a secondary YOLO model to detect and blur windows in real-time, ensuring privacy compliance during urban inspections.
+- **WebSocket Metadata Channel**: Implemented a standalone metadata stream to separate heavy image data from lightweight detection events.
+- **Final Result Report (HTML/PPT)**: Developed a high-fidelity interactive HTML presentation and automated PPT generation scripts for stakeholders.
+- **Style Synchronization**: Perfectly matched AI detailed analysis slides between technical prototypes and final reports.
+- **System Hardening**: Optimized MacBook hardware resource allocation for dual-model concurrent execution.

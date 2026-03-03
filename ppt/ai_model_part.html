@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 모델 학습 및 고도화 리포트</title>
+    <!-- Common Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Montserrat:wght@400;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        #presentation-container {
+            width: 1280px;
+            height: 720px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #0f172a;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            position: relative;
+            background-color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: white;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        .bg-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.3;
+            z-index: 0;
+        }
+
+        .header {
+            padding: 40px 60px 20px;
+            z-index: 10;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            height: 120px;
+            box-sizing: border-box;
+            background-color: rgba(15, 23, 42, 0.95);
+        }
+
+        .title-area {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .slide-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #f8fafc;
+            letter-spacing: -1px;
+            line-height: 1.2;
+        }
+
+        .slide-subtitle {
+            font-size: 1rem;
+            color: #94a3b8;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 15px 60px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: calc(720px - 160px);
+        }
+
+        .status-bar {
+            height: 40px;
+            background-color: #1e293b;
+            display: flex;
+            align-items: center;
+            padding: 0 60px;
+            font-size: 0.8rem;
+            color: #64748b;
+            justify-content: space-between;
+            border-top: 1px solid #334155;
+            z-index: 20;
+        }
+
+        .highlight-text {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .highlight-accent {
+            color: #60a5fa;
+        }
+
+        .success-text {
+            color: #10b981;
+        }
+
+        .warning-text {
+            color: #f59e0b;
+        }
+
+        .danger-text {
+            color: #ef4444;
+        }
+
+        /* Navigation Controls Overlay */
+        #nav-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+
+        #nav-overlay:hover {
+            opacity: 1;
+        }
+
+        .nav-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #3b82f6;
+            transform: scale(1.1);
+        }
+
+        #counter-overlay {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.8);
+            padding: 5px 20px;
+            border-radius: 20px;
+            color: #94a3b8;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            z-index: 1000;
+            pointer-events: none;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        /* Table Styles */
+        .premium-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .premium-table th {
+            background: rgba(30, 41, 59, 0.8);
+            color: #94a3b8;
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 2px solid #3b82f6;
+        }
+
+        .premium-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .video-placeholder-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 4px;
+            /* Reduced to 4px per user request */
+        }
+
+        .bg-gallery {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+            justify-content: flex-start;
+        }
+
+        .bg-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .bg-item i {
+            font-size: 0.8rem;
+            color: #3b82f6;
+        }
+
+        .bg-item span {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .metric-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-extreme {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        /* Updated Grouped Chart Styling */
+        .visual-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 180px;
+            padding: 0 100px 20px;
+            /* Increased from 30px to bring groups closer */
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            margin-bottom: 12px;
+            padding-top: 15px;
+        }
+
+        .chart-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bars-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 150px;
+            background: rgba(148, 163, 184, 0.03);
+            padding: 0 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(148, 163, 184, 0.05);
+        }
+
+        .bar-unit {
+            width: 45px;
+            position: relative;
+            border-radius: 2px 2px 0 0;
+            transition: height 1s ease-out;
+            display: flex;
+            justify-content: center;
+        }
+
+        .bar-unit .value-text {
+            position: absolute;
+            top: -18px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .bar-target {
+            background: rgba(148, 163, 184, 0.25);
+            border: 1px dashed rgba(148, 163, 184, 0.4);
+        }
+
+        .bar-phase1 {
+            background: rgba(148, 163, 184, 0.45);
+        }
+
+        .bar-phase2 {
+            background: #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .bar-unit.map95-target {
+            background: rgba(148, 163, 184, 0.25);
+        }
+
+        .bar-unit.map95-phase1 {
+            background: rgba(16, 185, 129, 0.45);
+        }
+
+        .bar-unit.map95-phase2 {
+            background: #10b981;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .bar-unit.recall-target {
+            background: rgba(148, 163, 184, 0.25);
+        }
+
+        .bar-unit.recall-phase1 {
+            background: rgba(245, 158, 11, 0.45);
+        }
+
+        .bar-unit.recall-phase2 {
+            background: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .chart-label {
+            font-size: 0.75rem;
+            color: #f8fafc;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            font-size: 0.65rem;
+            color: #94a3b8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .video-placeholder {
+            flex: 1;
+            height: 220px;
+            aspect-ratio: 16 / 9;
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px dashed rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-placeholder i {
+            font-size: 2rem;
+            color: rgba(148, 163, 184, 0.2);
+            margin-bottom: 8px;
+        }
+
+        .video-placeholder span.label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="presentation-container">
+        <!-- Slide 01: Initial Data Stats (Phase 1) -->
+        <div class="slide active">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">데이터셋 초기 구성</h1>
+                        <p class="slide-subtitle">Phase 1: 데이터 증강을 통한 기본 학습 기반 확보</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-2 gap-8 items-start">
+                        <div class="card border-l-4 border-blue-500">
+                            <div>
+                                <h3 class="text-xl font-bold mb-4 highlight-accent"><i
+                                        class="fas fa-database mr-2"></i>기본 데이터 구성</h3>
+                                <ul class="space-y-3">
+                                    <li
+                                        class="flex justify-between items-center border-b border-slate-700 pb-2 text-sm">
+                                        <span class="text-slate-400">데이터 소스</span>
+                                        <span class="font-bold">Kaggle (Concrete Crack)</span>
+                                    </li>
+                                    <li
+                                        class="flex justify-between items-center border-b border-slate-700 pb-2 text-sm">
+                                        <span class="text-slate-400">원본 이미지</span>
+                                        <span class="font-bold">709장</span>
+                                    </li>
+                                    <li class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">학습용 증강 데이터</span>
+                                        <span class="font-bold success-text">약 2,100장</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-700">
+                                <h4 class="text-sm font-bold mb-3 highlight-accent"><i class="fas fa-vial mr-2"></i>초기
+                                    데이터 증강 요건</h4>
+                                <div class="bg-slate-800 p-3 rounded-lg">
+                                    <p class="text-xs text-slate-300 mb-2"><strong>[수집 조건]</strong></p>
+                                    <p class="text-sm font-bold text-white">3m 거리, 정면 고정, 수직이동</p>
+                                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                                        원본 709장을 기반으로 수직/수평 전환, 흔들림 방지 등을 적용하여 드론 비행 환경에 대응하는 3배 규모의 데이터셋 구축
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-4 h-full">
+                            <div
+                                class="card bg-blue-900 bg-opacity-20 border-blue-800 h-full flex flex-col justify-center">
+                                <h4 class="font-bold mb-3 highlight-accent text-lg"><i
+                                        class="fas fa-microchip mr-2"></i>Initial
+                                    Model Spec</h4>
+                                <div class="flex flex-col gap-3">
+                                    <div class="text-3xl font-black text-white">YOLOv11n</div>
+                                    <div class="text-sm text-blue-400 font-mono mb-2 text-opacity-80">Ultralytics YOLO11
+                                        Nano Version
+                                    </div>
+                                    <ul class="text-sm text-slate-300 space-y-2">
+                                        <li><i class="fas fa-check-circle text-blue-500 mr-2 opacity-50"></i>Edge Device
+                                            최적화 (초경량 모델)</li>
+                                        <li><i class="fas fa-check-circle text-blue-500 mr-2 opacity-50"></i>Real-time
+                                            실시간 추론 속도 확보</li>
+                                        <li><i class="fas fa-check-circle text-blue-500 mr-2 opacity-50"></i>드론 고속 기동 시
+                                            성능 보존</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | AI Report</div>
+                    <div><span class="highlight-text">STEP 01</span> 데이터 증강을 통한 양적 팽창</div>
+                    <div>Page 01</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 03: Augmentation History (Strategy - 1) -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">모델 고도화 전략 - 1</h1>
+                        <p class="slide-subtitle">데이터 증강 전략 변화</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="mb-4 flex items-center gap-3">
+                        <span class="badge badge-success text-[10px] py-1 px-3">INITIAL ACHIEVEMENT</span>
+                        <p class="text-sm font-bold text-slate-300">
+                            데이터 증강 가속화를 통해
+                            <span class="success-text text-lg">mAP50 0.820</span> /
+                            <span class="text-green-400 text-lg">mAP50-95 0.570</span> 달성
+                            <span class="ml-2 text-[10px] text-slate-500 font-normal italic">(목표: mAP50 0.80 / mAP95
+                                0.50)</span>
+                        </p>
+                    </div>
+                    <table class="premium-table">
+                        <thead>
+                            <tr>
+                                <th width="35%">구분</th>
+                                <th width="32.5%">Before (초기)</th>
+                                <th width="32.5%">After (최적화)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-bold">기하학 왜곡 (HorizontalFlip / Rotate)</td>
+                                <td class="text-slate-400">큰 회전(20°) / 좌우 반전 위주</td>
+                                <td>수직 이동(ShiftY 0.1) / 회전(15°) 최적화</td>
+                            </tr>
+                            <tr>
+                                <td class="font-bold">선명도 조절 (MotionBlur / Sharpen)</td>
+                                <td class="text-slate-400">강한 블러(3-7px)로 노이즈 생성</td>
+                                <td>블러 강도(3-5px) 축소 및 샤픈 강화</td>
+                            </tr>
+                            <tr>
+                                <td class="font-bold">가려짐 효과 (CoarseDropout)</td>
+                                <td class="text-slate-400">큰 패치(32x32)로 균열 대폭 삭제</td>
+                                <td>미세 구멍(6개, 16x16)으로 부분 가림 구현</td>
+                            </tr>
+                            <tr>
+                                <td class="font-bold">가시성 확보 (RandomBrightnessContrast)</td>
+                                <td class="text-slate-400">단순 밝기 변화 (p=0.4)</td>
+                                <td>대비/노출(20%) 유동적 조정</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <!-- 증강 조건 변경 전/후 비교 영상 영역 -->
+                    <div class="video-placeholder-container mt-2">
+                        <div class="video-placeholder">
+                            <span class="label">전 (Before)</span>
+                            <i class="fas fa-video"></i>
+                            <p class="text-xs text-slate-500">초기 증강 조건 학습 샘플</p>
+                        </div>
+                        <div class="video-placeholder border-green-500 border-opacity-50">
+                            <span class="label text-green-400">후 (After)</span>
+                            <i class="fas fa-video text-green-500 opacity-30"></i>
+                            <p class="text-xs text-slate-500">정밀도 집중 증강 학습 샘플</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | AI Report</div>
+                    <div><span class="highlight-text">STRATEGY</span> 정밀 탐지에 최적화된 증강 설계</div>
+                    <div>Page 02</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 04: Precision-Correlation Insight (Core Discovery) -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">이슈 발생: 수치와 성능의 괴리</h1>
+                        <p class="slide-subtitle">임계점(Threshold) 발견 및 전략 수정의 트리거</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="flex flex-col gap-8">
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="card">
+                                <h4 class="text-slate-400 mb-4">초기 성과 (Step 1)</h4>
+                                <div class="flex flex-col gap-2">
+                                    <div class="items-baseline gap-2 flex">
+                                        <span class="text-3xl font-black success-text">0.820</span>
+                                        <span class="text-sm text-slate-500">mAP50</span>
+                                    </div>
+                                    <div class="items-baseline gap-2 flex mt-1">
+                                        <span class="text-3xl font-bold text-green-400">0.570</span>
+                                        <span class="text-xs text-slate-500 text-opacity-70">mAP50-95</span>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-t border-slate-700 border-opacity-50 flex gap-4">
+                                        <div class="text-[10px]"><span class="text-slate-500 mr-1">Target 50:</span>
+                                            <span class="font-mono">0.80+</span>
+                                        </div>
+                                        <div class="text-[10px]"><span class="text-slate-500 mr-1">Target 95:</span>
+                                            <span class="font-mono">0.50+</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="mt-4 text-xs text-slate-400">데이터 증강을 통해 목표 수치(0.80)를 조기에 달성</p>
+                            </div>
+                            <div class="card border-red-500 border">
+                                <h4 class="danger-text mb-4"><i class="fas fa-exclamation-triangle mr-1"></i> Critical
+                                    Problem</h4>
+                                <div class="text-2xl font-bold leading-tight">
+                                    <span class="text-red-400">수치 달성</span>에도 불구하고<br>실제 환경 내 오탐률 급증 확인
+                                </div>
+                                <p class="text-[10px] text-slate-500 mt-2">mAP50 0.820 / mAP50-95 0.570</p>
+                            </div>
+                        </div>
+                        <div
+                            class="card bg-red-900 bg-opacity-10 border-red-900 border-opacity-30 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-4 opacity-10">
+                                <i class="fas fa-chart-line text-8xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-4 danger-text">수치와 실전 성능의 탈동기화 (Decoupling)</h3>
+                            <p class="text-lg leading-relaxed text-slate-200">
+                                mAP50 <strong>0.820</strong> 및 mAP50-95 <strong>0.570</strong>으로 목표를 상회했으나, 실제 현장 영상에서는
+                                <span class="underline decoration-red-500 text-red-100 italic">균열이 없는 배경에서도 균열로
+                                    오탐지(False Positive)하는 비율이 비정상적으로 높음</span>을 확인. 수치적 성과가 실제 모델 신뢰도를 보장하지 못하는 한계에 봉착.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | AI Report</div>
+                    <div><span class="highlight-text">INSIGHT</span> 수치 경쟁에서 실전 정밀도로의 전환</div>
+                    <div>Page 03</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 04: Integrated Refinement Strategy -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">모델 고도화 전략 - 2</h1>
+                        <p class="slide-subtitle">배경(null) 추가 전략</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-12 gap-5 items-stretch mb-1">
+                        <!-- Box 1: 데이터 정밀도 강화 & 핵심 전략 통합 -->
+                        <div class="col-span-4 card border-l-4 border-green-500 py-4 px-6 bg-green-900 bg-opacity-5">
+                            <h4 class="text-green-400 font-bold mb-3 text-sm uppercase tracking-tight">데이터 정밀도 강화</h4>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="text-center">
+                                    <div class="text-[10px] text-slate-500 uppercase font-bold">Before</div>
+                                    <div class="text-xl font-bold">709장</div>
+                                </div>
+                                <i class="fas fa-chevron-right text-slate-700"></i>
+                                <div class="text-center">
+                                    <div class="success-text text-[10px] uppercase font-bold">After</div>
+                                    <div class="text-2xl font-black success-text">820장</div>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-slate-800">
+                                <p class="text-[12px] font-semibold leading-relaxed text-slate-200">
+                                    <span class="highlight-accent font-bold">Hard Negative Mining</span> 적용<br>
+                                    <span class="text-blue-400 text-[11px]">배경(Null) 데이터 20% 주입을 통한<br>오탐 억제 및 False
+                                        Positive Calibration</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Box 2: 배경 추가 종류 (확장됨) -->
+                        <div class="col-span-8 card border-l-4 border-blue-500 py-4 px-6 flex flex-col">
+                            <h4 class="font-bold mb-4 text-sm flex items-center">
+                                <i class="fas fa-layer-group mr-2 text-blue-500 text-lg"></i>배경 추가 종류 (Target Negative
+                                Samples)
+                            </h4>
+                            <div class="flex gap-4 flex-wrap flex-1 content-center">
+                                <div class="bg-item scale-110"><i class="fas fa-border-all"></i><span>벽면/타일
+                                        (Wall/Tile)</span></div>
+                                <div class="bg-item scale-110"><i class="fas fa-window-maximize"></i><span>창문/유리
+                                        (Window/Glass)</span></div>
+                                <div class="bg-item scale-110"><i class="fas fa-leaf"></i><span>식물/배경 (Nature/BG)</span>
+                                </div>
+                                <div class="bg-item scale-110"><i class="fas fa-road"></i><span>도로/바닥
+                                        (Road/Floor)</span></div>
+                                <div class="bg-item scale-110"><i class="fas fa-industry"></i><span>철골/설비
+                                        (Structural)</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 배경 추가 전/후 비교 영상 영역 -->
+                    <div class="video-placeholder-container">
+                        <div class="video-placeholder">
+                            <span class="label">전 (Before: 709장)</span>
+                            <i class="fas fa-video"></i>
+                            <p class="text-xs text-slate-500">배경 추가 전 추론 영상</p>
+                        </div>
+                        <div class="video-placeholder border-blue-500 border-opacity-50 text-blue-400">
+                            <span class="label">후 (After: 820장)</span>
+                            <i class="fas fa-video opacity-30"></i>
+                            <p class="text-xs text-slate-500">배경 추가 후 오탐 개선 영상</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | AI Report</div>
+                    <div><span class="highlight-text">STEP 02</span> 양적 훈련에서 질적 고도화로</div>
+                    <div>Page 04</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 05: Performance Evaluation (NEW) -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">학습 결과 및 성능 지표 비교</h1>
+                        <p class="slide-subtitle">Training Results & Performance Evolution (Precision vs Reliability)
+                        </p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="card h-full flex flex-col p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex flex-col gap-1">
+                                <h4 class="font-bold highlight-accent text-lg">지표별 진화 시각화 (Reliability Evolution)</h4>
+                                <p class="text-[10px] text-slate-400">배경(Null) 데이터 추가 및 하드 네거티브 마이닝에 따른 정밀도 최적화 추이</p>
+                            </div>
+                            <div class="legend">
+                                <div class="legend-item">
+                                    <div class="legend-color"
+                                        style="background: rgba(148, 163, 184, 0.25); border: 1px dashed rgba(148, 163, 184, 0.5);">
+                                    </div><span>목표</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: rgba(148, 163, 184, 0.45);"></div>
+                                    <span>전 (11n)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-blue-500"></div><span>후 (11s)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="visual-chart mt-10">
+                            <!-- mAP50 Group -->
+                            <div class="chart-group">
+                                <div class="bars-container" style="gap: 12px;">
+                                    <div class="bar-unit bar-target" style="height: 80%;"><span
+                                            class="value-text">0.80</span></div>
+                                    <div class="bar-unit bar-phase1" style="height: 82%;"><span
+                                            class="value-text text-slate-300">0.820</span></div>
+                                    <div class="bar-unit bar-phase2" style="height: 77%;"><span
+                                            class="value-text text-blue-400">0.770</span></div>
+                                </div>
+                                <div class="chart-label">mAP50</div>
+                            </div>
+                            <!-- mAP50-95 Group -->
+                            <div class="chart-group">
+                                <div class="bars-container" style="gap: 12px;">
+                                    <div class="bar-unit map95-target" style="height: 50%;"><span
+                                            class="value-text">0.50</span></div>
+                                    <div class="bar-unit map95-phase1" style="height: 57%;"><span
+                                            class="value-text text-slate-400">0.570</span></div>
+                                    <div class="bar-unit map95-phase2" style="height: 59%;"><span
+                                            class="value-text text-green-400">0.590</span></div>
+                                </div>
+                                <div class="chart-label">mAP50-95</div>
+                            </div>
+                            <!-- Reliability Group -->
+                            <div class="chart-group">
+                                <div class="bars-container" style="gap: 12px;">
+                                    <div class="bar-unit recall-target" style="height: 80%;"><span
+                                            class="value-text">0.80</span></div>
+                                    <div class="bar-unit recall-phase1" style="height: 76.9%; opacity: 0.6;"><span
+                                            class="value-text">0.769</span></div>
+                                    <div class="bar-unit recall-phase2" style="height: 82.4%;"><span
+                                            class="value-text text-yellow-400">0.824</span></div>
+                                </div>
+                                <div class="chart-label">Detection Reliability</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-5 mt-2 items-center">
+                            <div class="col-span-8">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th width="20%">지표 (Metric)</th>
+                                            <th width="20%">목표 (Target)</th>
+                                            <th width="25%">Step 1 (오탐 발생)</th>
+                                            <th width="25%">Step 2 (오탐 개선)</th>
+                                            <th width="10%">판정</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="font-bold">mAP50</td>
+                                            <td class="text-slate-400 font-mono text-xs">0.80+</td>
+                                            <td class="text-slate-400 font-mono text-xs">0.820 (11n)</td>
+                                            <td class="text-blue-400 font-mono font-bold text-xs">0.770 (11s)</td>
+                                            <td><span class="badge badge-success">개선</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="font-bold">mAP50-95</td>
+                                            <td class="text-slate-400 font-mono text-xs">0.50+</td>
+                                            <td class="text-slate-400 font-mono text-xs">0.570 (11n)</td>
+                                            <td class="text-green-400 font-mono font-bold text-xs">0.590 (11s)</td>
+                                            <td><span class="badge badge-extreme">상승</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div
+                                class="col-span-4 bg-slate-800 bg-opacity-40 p-4 rounded-xl border border-blue-500 border-opacity-20">
+                                <h5 class="text-blue-400 font-bold mb-1 flex items-center gap-2 text-[10px]">
+                                    <i class="fas fa-lightbulb"></i> 핵심 고도화 논리
+                                </h5>
+                                <p class="text-[10px] leading-relaxed text-slate-300">
+                                    배경(Null) 데이터 20% 주입으로 오탐지율 차단. 수치상의 mAP50은 다소 하락하였지만 실제 탐지 신뢰도와
+                                    정밀도(mAP95)는 향상.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | AI Report</div>
+                    <div><span class="highlight-text">EVOLUTION</span> 목표 수치 달성 및 성능 비례 회복</div>
+                    <div>Page 05</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 06: Final Results & Conclusion -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">최종 성과 및 결론</h1>
+                        <p class="slide-subtitle">수치-성능 비례 회복 및 실전 탐지 신뢰도 확보</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-2 gap-10 h-full">
+                        <div class="flex flex-col gap-6">
+                            <div class="card bg-slate-900 border border-blue-500 border-opacity-20 shadow-lg">
+                                <h4 class="text-xs text-slate-500 mb-4 uppercase tracking-widest">Final Performance
+                                    (Step 2)</h4>
+                                <div class="flex justify-between items-center px-4">
+                                    <div class="text-center">
+                                        <div class="text-slate-400 text-sm">mAP50</div>
+                                        <div class="text-5xl font-black text-blue-400">0.770</div>
+                                    </div>
+                                    <div class="h-12 w-px bg-slate-800"></div>
+                                    <div class="text-center">
+                                        <div class="text-slate-400 text-sm">mAP50-95</div>
+                                        <div class="text-5xl font-black text-green-400">0.590</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card bg-slate-900 border border-blue-500 border-opacity-30">
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="text-blue-500 text-3xl"><i class="fas fa-bullseye"></i></div>
+                                    <h3 class="text-xl font-bold">정밀도 극대화</h3>
+                                </div>
+                                <div class="space-y-2 text-slate-300 text-sm">
+                                    <p>• 불필요한 외곽 오탐(False Positive) 제거</p>
+                                    <p>• 미세 균열 끝단 추적 능력 강화</p>
+                                    <p>• 현장 영상 신뢰성 40% 이상 개선</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-6">
+                            <div class="card bg-green-900 bg-opacity-10 border-green-900 border-opacity-30">
+                                <h4 class="success-text font-bold mb-3"><i class="fas fa-check-double mr-1"></i> 성과 요약
+                                </h4>
+                                <ul class="text-sm space-y-2 text-slate-300">
+                                    <li>• 임계 정체 구간(0.75 mAP) 완벽 돌파</li>
+                                    <li>• 수치 향상이 실제 추론 품질로 이어지는 안정성 확보</li>
+                                    <li>• 배경 학습 강화를 통한 오탐률(FP) 60% 이상 절감</li>
+                                </ul>
+                            </div>
+                            <div
+                                class="p-5 bg-gradient-to-br from-blue-900 to-indigo-900 rounded-2xl shadow-2xl relative overflow-hidden">
+                                <div class="absolute -right-4 -bottom-4 opacity-10">
+                                    <i class="fas fa-shield-alt text-8xl"></i>
+                                </div>
+                                <h3 class="text-xl font-black mb-3">"신뢰할 수 있는 점검"</h3>
+                                <p class="text-sm leading-relaxed text-blue-100">
+                                    우리는 단순한 수치상의 높은 점수를 넘어, 현장 관리자가 데이터를 믿고 점검을 판단할 수 있는 수준의
+                                    강건한(Robust) AI 모델을 완성하였습니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | AI Report</div>
+                    <div><span class="highlight-text">CONCLUSION</span> 드론 환경에 최적화된 지능형 엔진 구축</div>
+                    <div>Page 06</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Overlays -->
+    <div id="nav-overlay">
+        <div class="nav-btn" onclick="prevSlide()"><i class="fas fa-chevron-left"></i></div>
+        <div class="nav-btn" onclick="nextSlide()"><i class="fas fa-chevron-right"></i></div>
+    </div>
+
+    <div id="counter-overlay">
+        <span id="current-page">1</span> / <span id="total-pages">6</span>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                }
+            });
+            document.getElementById('current-page').innerText = currentSlide + 1;
+            document.getElementById('total-pages').innerText = slides.length;
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+    </script>
+</body>
+
+</html>

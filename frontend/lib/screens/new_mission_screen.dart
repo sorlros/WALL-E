@@ -52,7 +52,7 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
     if (_missionNameController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('미션 이름을 입력해주세요.')));
+      ).showSnackBar(const SnackBar(content: Text('진행할 점검(미션)의 이름을 입력해 주세요.')));
       return;
     }
 
@@ -100,9 +100,12 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('미션 생성 실패: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('미션을 생성할 수 없습니다. 네트워크 상태를 확인해 주세요.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -401,9 +404,20 @@ class _NewMissionScreenState extends State<NewMissionScreen> {
                     SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
+                      // Changed to use the new Radar UI, but keeping it small inside the button
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: Colors.cyanAccent,
+                            strokeWidth: 2,
+                          ),
+                          Icon(
+                            Icons.center_focus_strong,
+                            color: Colors.cyanAccent,
+                            size: 12,
+                          ),
+                        ],
                       ),
                     ),
                   ]

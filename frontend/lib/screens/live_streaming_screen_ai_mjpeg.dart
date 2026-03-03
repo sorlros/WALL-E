@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_mjpeg/flutter_mjpeg.dart';
 import 'dart:convert';
+import '../widgets/option_c_loading.dart';
 
 class LiveStreamingScreenAiOnly extends StatefulWidget {
   final int? missionId;
@@ -24,6 +25,7 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
   // WebSocket
   WebSocketChannel? _channel;
   List<dynamic> _detections = [];
+  List<dynamic> _windowDetections = []; // Store window bboxes
   int _savedCount = 0;
   bool _showOverlay = true;
 
@@ -55,9 +57,14 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
             final data = jsonDecode(message);
             if (mounted) {
               setState(() {
-                _detections = [data];
-                if (data.containsKey('saved_count')) {
-                  _savedCount = data['saved_count'];
+                if (data['type'] == 'window') {
+                  _windowDetections = data['bboxes'] ?? [];
+                } else {
+                  // Assuming it's crack or default
+                  _detections = [data];
+                  if (data.containsKey('saved_count')) {
+                    _savedCount = data['saved_count'];
+                  }
                 }
               });
             }
@@ -93,12 +100,10 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
                   ? Mjpeg(
                       isLive: true,
                       stream: mjpegStreamUrl,
-                      error: (context, error, stack) => const Center(
-                        child: Text(
-                          'AI 비디오 스트림 연결 실패',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
+                      error: (context, error, stack) =>
+                          const OptionCLoading(), // Custom Radar UI
+                      loading: (context) =>
+                          const OptionCLoading(), // Show while connecting
                     )
                   : const Center(
                       child: Text(
@@ -109,8 +114,17 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
             ),
           ),
 
-          // Custom Bounding Box Painter is REMOVED!
-          // Because the backend cv2 already draws the boxes exactly on the frames.
+          // Custom Bounding Box Painter for Windows
+          if (_showOverlay && _windowDetections.isNotEmpty)
+            Positioned.fill(
+              child: CustomPaint(painter: WindowBBoxPainter(_windowDetections)),
+            ),
+
+          // Custom Painter for Crack Re-ID Similarity (Bottom Right)
+          if (_showOverlay && _detections.isNotEmpty)
+            Positioned.fill(
+              child: CustomPaint(painter: CrackSimPainter(_detections)),
+            ),
 
           // Debug Overlay
           Positioned(
@@ -120,10 +134,12 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
               padding: const EdgeInsets.all(8),
               color: Colors.black54,
               child: Text(
-                'Saved: $_savedCount\n'
-                'Last: ${_detections.isNotEmpty ? "${_detections[0]['label']} (${(_detections[0]['confidence'] * 100).toInt()}%)" : "None"}\n'
-                'Re-ID Sim: ${_detections.isNotEmpty && _detections[0]['reid_sim'] != null ? "${(_detections[0]['reid_sim'] * 100).toStringAsFixed(1)}%" : "-"}',
-                style: const TextStyle(color: Colors.yellow, fontSize: 16),
+                '감지된 균열: $_savedCount',
+                style: const TextStyle(
+                  color: Colors.yellow,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -177,98 +193,123 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
             ),
           ),
 
-          // Bottom Controls (Stop Button)
+          // Bottom Controls (Stop Button & Capture Button)
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 24,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: SizedBox(
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    if (widget.missionId != null) {
-                      try {
-                        await ApiService.completeMission(widget.missionId!);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('미션이 종료되었습니다.')),
-                          );
+            left: 16,
+            right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Stop Button
+                Expanded(
+                  flex: 5,
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        if (widget.missionId != null) {
+                          try {
+                            await ApiService.completeMission(widget.missionId!);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('점검이 안전하게 종료되었습니다.'),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    '종료 중 문제가 발생했습니다. 네트워크 상태를 확인해 주세요.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         }
-                      } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('미션 종료 오류: $e')),
-                          );
+                          Navigator.pop(context);
                         }
-                      }
-                    }
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[600],
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                    ), // 구모양(반원)에서 양옆 여백 추가
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        28,
-                      ), // 56의 절반인 28을 주어 완벽한 둥근 캡슐 형태(구모양 베이스)
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[600],
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
+                      icon: const Icon(Icons.stop_circle, size: 24),
+                      label: const Text(
+                        '종료',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                  icon: const Icon(Icons.stop_circle, size: 28),
-                  label: const Text(
-                    'AI 화면 스트림 종료',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 16),
+                // Capture Button
+                Expanded(
+                  flex: 4,
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        HapticFeedback.heavyImpact(); // 햅틱 피드백 '찰칵'
+                        if (widget.missionId != null) {
+                          try {
+                            await ApiService.captureManualSnapshot(
+                              widget.missionId!,
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('선택하신 화면이 안전하게 저장되었습니다.'),
+                                  backgroundColor: Colors.green,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    '이미지 저장에 실패했습니다. 기기 용량이나 네트워크를 확인해 주세요.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                      ),
+                      icon: const Icon(Icons.camera_alt, size: 24),
+                      label: const Text(
+                        '캡처',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
-
-          // Manual Capture Button (Right Side)
-          Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + 24,
-            right: 24,
-            child: FloatingActionButton.extended(
-              onPressed: () async {
-                HapticFeedback.heavyImpact(); // 햅틱 피드백 '찰칵'
-                if (widget.missionId != null) {
-                  try {
-                    await ApiService.captureManualSnapshot(widget.missionId!);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('📸 수동 캡처 이미지가 저장되었습니다.'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('캡처 실패: $e'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-              backgroundColor: Colors.white,
-              icon: const Icon(Icons.camera_alt, color: Colors.black, size: 28),
-              label: const Text(
-                '캡처',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
+              ],
             ),
           ),
         ],
@@ -309,5 +350,134 @@ class _LiveStreamingScreenAiOnlyState extends State<LiveStreamingScreenAiOnly> {
         });
       }
     });
+  }
+}
+
+class WindowBBoxPainter extends CustomPainter {
+  final List<dynamic> detections;
+
+  WindowBBoxPainter(this.detections);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (detections.isEmpty) return;
+
+    final paintOverlay = Paint()
+      ..color = Colors.black
+          .withOpacity(0.8) // Semi-transparent black for masking
+      ..style = PaintingStyle.fill;
+
+    final paintBorder = Paint()
+      ..color = Colors.greenAccent
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    for (var detection in detections) {
+      if (detection['bbox_norm'] != null) {
+        List<dynamic> bboxNorm = detection['bbox_norm'];
+        if (bboxNorm.length == 4) {
+          // YOLO format: [center_x, center_y, width, height] (normalized)
+          double cx = bboxNorm[0] * size.width;
+          double cy = bboxNorm[1] * size.height;
+          double bw = bboxNorm[2] * size.width;
+          double bh = bboxNorm[3] * size.height;
+
+          // Convert to top-left and bottom-right
+          double left = cx - (bw / 2);
+          double top = cy - (bh / 2);
+
+          final rect = Rect.fromLTWH(left, top, bw, bh);
+
+          // Draw masking overlay
+          canvas.drawRect(rect, paintOverlay);
+          // Draw border
+          canvas.drawRect(rect, paintBorder);
+
+          // Optional: Draw text label (Centered)
+          final textPainter = TextPainter(
+            text: const TextSpan(
+              text: ' 사생활 보호 영역 ',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                backgroundColor: Colors.black87,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          );
+          textPainter.layout();
+
+          // Draw text exactly in the center of the bounding box
+          double textX = cx - (textPainter.width / 2);
+          double textY = cy - (textPainter.height / 2);
+          textPainter.paint(canvas, Offset(textX, textY));
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant WindowBBoxPainter oldDelegate) {
+    return true; // Always repaint when detections change
+  }
+}
+
+class CrackSimPainter extends CustomPainter {
+  final List<dynamic> detections;
+
+  CrackSimPainter(this.detections);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (detections.isEmpty) return;
+
+    for (var detection in detections) {
+      if (detection['bbox'] != null && detection['reid_sim'] != null) {
+        List<dynamic> bboxNorm = detection['bbox'];
+        if (bboxNorm.length == 4) {
+          double cx = bboxNorm[0] * size.width;
+          double cy = bboxNorm[1] * size.height;
+          double bw = bboxNorm[2] * size.width;
+          double bh = bboxNorm[3] * size.height;
+
+          // Bottom right corner of the crack bounding box
+          double right = cx + (bw / 2);
+          double bottom = cy + (bh / 2);
+
+          double sim = detection['reid_sim'] * 100;
+          String matchedText = '';
+          if (detection['matched_id'] != null) {
+            matchedText = ' (ID: ${detection['matched_id']})';
+          }
+
+          final textPainter = TextPainter(
+            text: TextSpan(
+              text: ' 유사도: ${sim.toStringAsFixed(1)}%$matchedText ',
+              style: TextStyle(
+                color: sim < 80.0
+                    ? Colors.greenAccent
+                    : Colors
+                          .redAccent, // Green if new crack (<80%), Red if duplicate
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                backgroundColor: Colors.black87,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          );
+          textPainter.layout();
+
+          // Draw at bottom right offset
+          // Offset slightly so it doesn't overlap exactly with the box lines
+          textPainter.paint(canvas, Offset(right + 4, bottom + 4));
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CrackSimPainter oldDelegate) {
+    return true;
   }
 }

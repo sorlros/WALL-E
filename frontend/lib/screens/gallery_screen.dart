@@ -3,8 +3,25 @@ import '../services/api_service.dart';
 import '../models/mission_model.dart';
 import 'mission_detail_screen.dart';
 
-class GalleryScreen extends StatelessWidget {
+class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
+
+  @override
+  State<GalleryScreen> createState() => _GalleryScreenState();
+}
+
+class _GalleryScreenState extends State<GalleryScreen> {
+  // 'desc' for 최근 날짜순, 'asc' for 오래된 날짜순
+  String _sortOrder = 'desc';
+  bool _isSearching = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,24 +30,40 @@ class GalleryScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF101622),
         elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              '균열 감지 갤러리',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: '미션 이름 검색',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    '균열 감지 갤러리',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    '활성 미션 3개 • 이상 감지 142건',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
               ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              '활성 미션 3개 • 이상 감지 142건',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
-        ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 16),
@@ -39,8 +72,21 @@ class GalleryScreen extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.search, color: Colors.white70),
-              onPressed: () {},
+              icon: Icon(
+                _isSearching ? Icons.close : Icons.search,
+                color: Colors.white70,
+              ),
+              onPressed: () {
+                setState(() {
+                  if (_isSearching) {
+                    _isSearching = false;
+                    _searchQuery = '';
+                    _searchController.clear();
+                  } else {
+                    _isSearching = true;
+                  }
+                });
+              },
             ),
           ),
         ],
@@ -51,8 +97,24 @@ class GalleryScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                _buildFilterChip('전체 미션', isSelected: true),
-                _buildFilterChip('높은 신뢰도순'),
+                _buildFilterChip(
+                  '최근 날짜순',
+                  isSelected: _sortOrder == 'desc',
+                  onTap: () {
+                    setState(() {
+                      _sortOrder = 'desc';
+                    });
+                  },
+                ),
+                _buildFilterChip(
+                  '오래된 날짜순',
+                  isSelected: _sortOrder == 'asc',
+                  onTap: () {
+                    setState(() {
+                      _sortOrder = 'asc';
+                    });
+                  },
+                ),
               ],
             ),
           ),
@@ -113,7 +175,34 @@ class GalleryScreen extends StatelessWidget {
             );
           }
 
-          final missions = snapshot.data!;
+          final allMissions = snapshot.data!;
+
+          // Filter missions based on _searchQuery
+          final missions = allMissions.where((mission) {
+            return mission.name.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            );
+          }).toList();
+
+          // If no missions match the search query
+          if (missions.isEmpty && _searchQuery.isNotEmpty) {
+            return Center(
+              child: Text(
+                '"$_searchQuery" 검색 결과가 없습니다.',
+                style: const TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            );
+          }
+
+          // Sort missions based on _sortOrder
+          missions.sort((a, b) {
+            if (_sortOrder == 'desc') {
+              return b.createdAt.compareTo(a.createdAt); // Newest first
+            } else {
+              return a.createdAt.compareTo(b.createdAt); // Oldest first
+            }
+          });
+
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: missions.length,
@@ -211,10 +300,15 @@ class GalleryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFilterChip(String label, {bool isSelected = false}) {
+  Widget _buildFilterChip(
+    String label, {
+    bool isSelected = false,
+    VoidCallback? onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
-      child: Chip(
+      child: ActionChip(
+        onPressed: onTap ?? () {},
         label: Text(label),
         backgroundColor: isSelected
             ? const Color(0xFF135BEC)

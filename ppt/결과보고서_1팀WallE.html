@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wall-E 프로젝트 결과보고서</title>
+    <!-- Common Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #0f172a; }
+        #presentation-container { 
+            width: 1280px; 
+            height: 720px; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background-color: #0f172a; 
+            overflow: hidden; 
+            transform-origin: center center;
+        }
+        .slide-container { width: 1280px; height: 720px; position: relative; background-color: #0f172a; display: flex; flex-direction: column; overflow: hidden; color: white; font-family: 'Noto Sans KR', sans-serif; }
+        .bg-pattern { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.3; z-index: 0; }
+        .header { padding: 40px 60px 20px; z-index: 10; border-bottom: 1px solid rgba(148, 163, 184, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; height: 120px; box-sizing: border-box; background-color: rgba(15, 23, 42, 0.95); }
+        .title-area { display: flex; flex-direction: column; gap: 5px; }
+        .slide-title { font-family: 'Montserrat', sans-serif; font-size: 2.2rem; font-weight: 800; color: #f8fafc; letter-spacing: -1px; line-height: 1.2; }
+        .slide-subtitle { font-size: 1rem; color: #94a3b8; font-weight: 400; display: flex; align-items: center; gap: 10px; }
+        .content-area { flex: 1; padding: 15px 60px; z-index: 10; display: flex; flex-direction: column; gap: 15px; height: calc(720px - 160px); }
+        .status-bar { height: 40px; background-color: #1e293b; display: flex; align-items: center; padding: 0 60px; font-size: 0.8rem; color: #64748b; justify-content: space-between; border-top: 1px solid #334155; z-index: 20; position: absolute; bottom: 0; width: 100%; }
+        
+        .highlight-text { color: #3b82f6; font-weight: 600; }
+        .highlight-accent { color: #60a5fa; }
+        .success-text { color: #10b981; }
+        .warning-text { color: #f59e0b; }
+        .danger-text { color: #ef4444; }
+
+        #nav-overlay { position: fixed; bottom: 60px; right: 20px; display: flex; gap: 15px; z-index: 1000; opacity: 0.3; transition: opacity 0.3s; }
+        #nav-overlay:hover { opacity: 1; }
+        .nav-btn { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; }
+        .nav-btn:hover { background: #3b82f6; transform: scale(1.1); }
+        #counter-overlay { position: fixed; bottom: 65px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.8); padding: 5px 20px; border-radius: 20px; color: #94a3b8; font-family: 'Montserrat', sans-serif; font-size: 0.9rem; z-index: 1000; pointer-events: none; border: 1px solid rgba(148, 163, 184, 0.2); }
+
+        .slide { display: none; width: 100%; height: 100%; }
+        .slide.active { display: block; }
+        .card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 20px; }
+        
+        /* Global Font Size Adjustments (+4px) */
+        .slide-subtitle { font-size: 1.25rem !important; } /* 16px -> 20px */
+        .status-bar { font-size: 1.05rem !important; } /* 12.8px -> ~17px */
+        .premium-table { width: 100%; border-collapse: collapse; font-size: 1.15rem !important; } /* 14.4px -> ~19px */
+        .premium-table th { background: rgba(30, 41, 59, 0.8); color: #94a3b8; padding: 10px 15px; text-align: left; border-bottom: 2px solid #3b82f6; }
+        .premium-table td { padding: 10px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+
+        /* Tailwind Utility Overrides for Slides */
+        .text-xs { font-size: 1rem !important; line-height: 1.5 !important; }  /* 12px -> 16px */
+        .text-sm { font-size: 1.125rem !important; line-height: 1.6 !important; } /* 14px -> 18px */
+        .text-base { font-size: 1.25rem !important; line-height: 1.6 !important; } /* 16px -> 20px */
+        .text-lg { font-size: 1.375rem !important; line-height: 1.6 !important; } /* 18px -> 22px */
+        
+        /* Adjust list margins for larger font */
+        ul.space-y-2 > li { margin-bottom: 0.5rem; }
+
+        /* Image Zoom Styles (Layout-Based Overlay) */
+        #zoom-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: zoom-out;
+            backdrop-filter: blur(5px);
+        }
+        #zoom-overlay img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #zoom-overlay.active { display: flex; }
+        #zoom-overlay.active img { transform: scale(1); }
+        
+        img:not(.no-zoom) { cursor: zoom-in; transition: transform 0.2s; }
+        img:not(.no-zoom):hover { transform: scale(1.02); }
+
+        /* AI Deep-Dive Specific Styles (Synced with ai_model_part.html) */
+        .premium-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .premium-table th { background: rgba(30, 41, 59, 0.8); color: #94a3b8; padding: 8px 12px; text-align: left; border-bottom: 2px solid #3b82f6; }
+        .premium-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .badge { padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+        .badge-success { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-extreme { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .visual-chart { display: flex; align-items: flex-end; justify-content: space-between; height: 180px; padding: 0 100px 20px; border-bottom: 1px solid rgba(148, 163, 184, 0.2); margin-bottom: 12px; padding-top: 15px; }
+        .chart-group { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .bars-container { display: flex; align-items: flex-end; gap: 4px; height: 150px; background: rgba(148, 163, 184, 0.03); padding: 0 10px; border-radius: 6px; border: 1px solid rgba(148, 163, 184, 0.05); }
+        .bar-unit { width: 45px; position: relative; border-radius: 2px 2px 0 0; transition: height 1s ease-out; display: flex; justify-content: center; }
+        .bar-unit .value-text { position: absolute; top: -18px; font-size: 0.65rem; font-weight: 800; white-space: nowrap; }
+        .bar-target { background: rgba(148, 163, 184, 0.25); border: 1px dashed rgba(148, 163, 184, 0.4); }
+        .bar-phase1 { background: rgba(148, 163, 184, 0.45); }
+        .bar-phase2 { background: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+        
+        /* Specialized Chart Variations */
+        .bar-unit.map95-target { background: rgba(148, 163, 184, 0.25); }
+        .bar-unit.map95-phase1 { background: rgba(16, 185, 129, 0.45); }
+        .bar-unit.map95-phase2 { background: #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+        .bar-unit.recall-target { background: rgba(148, 163, 184, 0.25); }
+        .bar-unit.recall-phase1 { background: rgba(245, 158, 11, 0.45); }
+        .bar-unit.recall-phase2 { background: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+
+        .chart-label { font-size: 0.75rem; color: #f8fafc; font-weight: 700; margin-top: 5px; }
+        .legend { display: flex; justify-content: flex-end; gap: 15px; font-size: 0.65rem; color: #94a3b8; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 10px; height: 10px; border-radius: 2px; }
+
+        .video-placeholder-container { display: flex; gap: 20px; margin-top: 4px; }
+        .video-placeholder { flex: 1; height: 220px; aspect-ratio: 16 / 9; background: rgba(15, 23, 42, 0.6); border: 2px dashed rgba(148, 163, 184, 0.3); border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; overflow: hidden; }
+        .video-placeholder i { font-size: 2rem; color: rgba(148, 163, 184, 0.2); margin-bottom: 8px; }
+        .video-placeholder span.label { position: absolute; top: 10px; left: 10px; background: rgba(30, 41, 59, 0.8); padding: 2px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: #94a3b8; }
+
+        .bg-item { display: flex; align-items: center; gap: 5px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; color: #94a3b8; }
+        .bg-item i { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div id="presentation-container">
+        <!-- Zoom Overlay -->
+        <div id="zoom-overlay" onclick="closeZoom()">
+            <img id="zoomed-image" src="" alt="Zoomed Content">
+        </div>
+        
+        <!-- Slide 01: Cover -->
+        <div class="slide active">
+            <div class="slide-container" style="justify-content: center; align-items: center;">
+                <div class="bg-pattern" style="opacity: 0.1"></div>
+                <div style="z-index: 10; text-align: center; padding: 0 50px;">
+                    <div class="mb-8 flex justify-center">
+                         <img src="ppt/images/logo_bg_matched.png" alt="Wall-E App Logo" class="h-40 w-auto object-contain drop-shadow-2xl">
+                    </div>
+                    <!-- <h2 class="text-3xl text-slate-400 mb-6 tracking-widest uppercase">팀별 프로젝트 결과보고서</h2> -->
+                    <h1 class="text-7xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500" style="font-family: 'Montserrat', sans-serif;">Wall-E 프로젝트</h1>
+                    <h3 class="text-3xl text-slate-200 mb-12 font-bold leading-relaxed">
+                        드론 실시간 스트리밍 기반 <br>AI 건물 외벽 크랙 탐지 시스템
+                    </h3>
+                    <div class="inline-block bg-slate-800 bg-opacity-50 border border-slate-700 rounded-xl p-8 mb-4">
+                        <p class="text-xl font-bold highlight-accent mb-2">1조 TEAM WALL-E</p>
+                        <p class="text-lg text-slate-300">최규철 · 김도윤 · 최대산 · 강주영</p>
+                        <p class="text-sm text-slate-500 mt-4">(주)고누아이 | K-Digital Training</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 02: Table of Contents -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">목차 (Table of Contents)</h1>
+                        <p class="slide-subtitle">프로젝트 개발 절차 및 성과 요약 안내</p>
+                    </div>
+                </div>
+                <div class="content-area" style="justify-content: center;">
+                    <div class="grid grid-cols-2 gap-8 px-10">
+                        <div class="card bg-blue-900 bg-opacity-10 border-blue-500 border-l-4 hover:bg-opacity-20 transition-all cursor-default">
+                            <h3 class="text-xl font-bold mb-2 flex items-center"><span class="highlight-text mr-3 text-2xl font-black">01</span> 프로젝트 개요</h3>
+                            <p class="text-sm text-slate-400 ml-9">기획 의도, 주요 내용 및 기대 효과</p>
+                        </div>
+                        <div class="card bg-blue-900 bg-opacity-10 border-blue-500 border-l-4 hover:bg-opacity-20 transition-all cursor-default">
+                            <h3 class="text-xl font-bold mb-2 flex items-center"><span class="highlight-text mr-3 text-2xl font-black">02</span> 팀 구성 및 역할</h3>
+                            <p class="text-sm text-slate-400 ml-9">멤버별 핵심 개발 영역 (Backend, AI, BM, Frontend)</p>
+                        </div>
+                        <div class="card bg-blue-900 bg-opacity-10 border-blue-500 border-l-4 hover:bg-opacity-20 transition-all cursor-default">
+                            <h3 class="text-xl font-bold mb-2 flex items-center"><span class="highlight-text mr-3 text-2xl font-black">03</span> 수행 절차 및 협업 전략</h3>
+                            <p class="text-sm text-slate-400 ml-9">기획부터 최적화까지, GitHub 및 가상환경 협업</p>
+                        </div>
+                        <div class="card bg-blue-900 bg-opacity-10 border-blue-500 border-l-4 hover:bg-opacity-20 transition-all cursor-default">
+                            <h3 class="text-xl font-bold mb-2 flex items-center"><span class="highlight-text mr-3 text-2xl font-black">04</span> 주요 수행 경과</h3>
+                            <p class="text-sm text-slate-400 ml-9">AI 모델링 Deep-Dive, DB 아키텍처, 트러블슈팅, 성능 최적화 리포트</p>
+                        </div>
+                        <div class="card bg-blue-900 bg-opacity-10 border-blue-500 border-l-4 hover:bg-opacity-20 transition-all cursor-default">
+                            <h3 class="text-xl font-bold mb-2 flex items-center"><span class="highlight-text mr-3 text-2xl font-black">05</span> 자체 평가 의견</h3>
+                            <p class="text-sm text-slate-400 ml-9">안정성 성과 및 향후 개선 방향 등 코멘트</p>
+                        </div>
+                        <div class="card bg-blue-900 bg-opacity-10 border-blue-500 border-l-4 hover:bg-opacity-20 transition-all cursor-default">
+                            <h3 class="text-xl font-bold mb-2 flex items-center"><span class="highlight-text mr-3 text-2xl font-black">06</span> 비즈니스 모델 및 시장성</h3>
+                            <p class="text-sm text-slate-400 ml-9">B2B/B2G 시장 전략 및 경쟁 우위 요소 (Pricing)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">INDEX</span> 전체 구성도</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 03: Overview -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">01. 프로젝트 개요</h1>
+                        <p class="slide-subtitle">기획 의도, 배경 및 기술적 솔루션</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="card border-l-4 border-indigo-500">
+                            <h3 class="text-xl font-bold text-indigo-400 mb-3"><i class="fas fa-search-light mr-2"></i> 기획 의도 및 배경</h3>
+                            <ul class="space-y-2 text-sm text-slate-200 ml-5 list-disc pl-2">
+                                <li>고위험군인 고층 건물 및 교량의 외벽 균열(Crack) 점검을 자동화하여 <strong class="text-white">안전(Safety) 확보</strong></li>
+                                <li>드론(Phantom 4 Pro 등)의 실시간 영상 스트리밍을 통해 <strong class="text-white">현장에서 즉각적인 AI 시각 위협 탐지</strong> 수행</li>
+                            </ul>
+                        </div>
+                        <div class="card border-l-4 border-blue-500">
+                            <h3 class="text-xl font-bold text-blue-400 mb-3"><i class="fas fa-laptop-code mr-2"></i> 주요 프로젝트 내용 (기술 스택 매핑)</h3>
+                            <ul class="space-y-3 text-sm text-slate-200 ml-5 list-disc pl-2">
+                                <li>RTMP 기반 실시간 영상 수신 및 멀티 스레드 병렬 처리 <strong>스트림 매니저(StreamManager) 구축</strong></li>
+                                <li>YOLO11(객체 탐지) 및 MobileNetV3(Re-ID 쌍 분류)을 결합한 <strong>정밀 지능형 크랙 필터링 및 오탐 저감</strong></li>
+                                <li>FastAPI(백엔드)와 Flutter(프론트엔드/모바일) 연동을 통한 라이브 모니터링 생태계 통합</li>
+                            </ul>
+                        </div>
+                        <div class="card border-l-4 border-green-500">
+                            <h3 class="text-xl font-bold text-green-400 mb-3"><i class="fas fa-chart-line mr-2"></i> 기대 효과</h3>
+                            <ul class="space-y-2 text-sm text-slate-200 ml-5 list-disc pl-2">
+                                <li>근로자 고소작업 배제로 인한 인명 사고 제로화 및 크레인/비계 설치비용 획기적 단축</li>
+                                <li>사람이 아닌 AI 모델을 통한 객관성 확보</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 01</span> 프로젝트 개요</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 04: Technical Stack -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">01-1. Technical Stack</h1>
+                        <p class="slide-subtitle">프로젝트 핵심 기술 도구 및 개발 생태계</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-4 gap-4 h-full">
+                        <!-- Frontend -->
+                        <div class="card border-t-2 border-purple-500 bg-slate-800 bg-opacity-40 flex flex-col items-center">
+                            <i class="fas fa-mobile-alt text-4xl text-purple-400 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">Frontend</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-purple-300 border border-purple-900 flex items-center justify-center gap-2">
+                                    <i class="devicon-flutter-plain colored text-lg"></i> Flutter (3.2x)
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="devicon-dart-plain colored text-lg"></i> Dart Language
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="fas fa-layer-group text-purple-400"></i> Provider / Dio
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Backend -->
+                        <div class="card border-t-2 border-blue-500 bg-slate-800 bg-opacity-40 flex flex-col items-center text-center">
+                            <i class="fas fa-bolt text-4xl text-blue-400 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">Backend</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-300 border border-blue-900 flex items-center justify-center gap-2">
+                                    <i class="devicon-fastapi-plain colored text-lg"></i> FastAPI (Python)
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="fas fa-database text-blue-400"></i> SQLAlchemy
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="fas fa-microchip text-blue-300"></i> Uvicorn / Pydantic
+                                </div>
+                            </div>
+                        </div>
+                        <!-- AI & Data -->
+                        <div class="card border-t-2 border-green-500 bg-slate-800 bg-opacity-40 flex flex-col items-center text-center">
+                            <i class="fas fa-brain text-4xl text-green-400 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">AI / Vision</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-green-300 border border-green-900 flex items-center justify-center gap-2">
+                                    <i class="fas fa-bullseye text-red-500"></i> YOLOv11n
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="devicon-python-plain colored text-lg"></i> MobileNetV3 (Re-ID)
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="devicon-opencv-plain colored text-lg"></i> OpenCV / Roboflow
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Server & Infra -->
+                        <div class="card border-t-2 border-indigo-500 bg-slate-800 bg-opacity-40 flex flex-col items-center text-center">
+                            <i class="fas fa-server text-4xl text-indigo-400 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">Server / Infra</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-300 border border-indigo-900 flex items-center justify-center gap-2">
+                                    <i class="fas fa-broadcast-tower text-indigo-400"></i> MediaMTX (RTMP)
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="devicon-postgresql-plain colored text-lg"></i> Supabase (Auth/DB)
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                                    <i class="devicon-github-original text-lg"></i> GitHub Actions
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card bg-slate-900 bg-opacity-40 border border-slate-700 text-center py-4">
+                        <p class="text-xs text-slate-400">
+                            <i class="fas fa-info-circle mr-2"></i> Wall-E 프로젝트는 <strong>마이크로서비스 지향적 3-Thread 분리 구조</strong>와 <strong>클라우드 연동</strong>을 통해 설계되었습니다.
+                        </p>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 01</span> Technical Tech Stack</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 05: Ecosystem & Workflow -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">01-2. Ecosystem & Workflow</h1>
+                        <p class="slide-subtitle">협업 도구 및 데이터/도메인 생태계</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-4 gap-4 h-full">
+                        <!-- Collaboration -->
+                        <div class="card border-t-2 border-indigo-400 bg-slate-800 bg-opacity-40 flex flex-col items-center">
+                            <i class="fas fa-users text-4xl text-indigo-400 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">Collaboration</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2">
+                                    <i class="fab fa-discord text-indigo-400 text-lg"></i> Discord
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2">
+                                    <i class="fas fa-file-alt text-slate-400 text-lg"></i> Notion Docs
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-300 flex items-center justify-center gap-2 border border-blue-900 border-opacity-40">
+                                    <i class="fas fa-hand-sparkles text-blue-400 text-lg"></i> Antigravity (AI)
+                                </div>
+                            </div>
+                        </div>
+                        <!-- AI Dataset -->
+                        <div class="card border-t-2 border-yellow-400 bg-slate-800 bg-opacity-40 flex flex-col items-center text-center">
+                            <i class="fas fa-database text-4xl text-yellow-400 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">AI Dataset</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2">
+                                    <i class="devicon-kaggle-plain colored text-lg"></i> Kaggle Dataset
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2">
+                                    <i class="fas fa-draw-polygon text-purple-400 text-lg"></i> Roboflow Label
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Training & Augment -->
+                        <div class="card border-t-2 border-red-500 bg-slate-800 bg-opacity-40 flex flex-col items-center text-center">
+                            <i class="fas fa-vial text-4xl text-red-500 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">Training & Aug</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2 border border-red-900 border-opacity-40">
+                                    <i class="devicon-google-plain colored text-lg"></i> Google Colab
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2">
+                                    <i class="fas fa-magic text-yellow-300 text-lg"></i> Albumentations
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Drone Domain -->
+                        <div class="card border-t-2 border-blue-400 bg-slate-800 bg-opacity-40 flex flex-col items-center text-center">
+                            <i class="fas fa-helicopter text-4xl text-blue-400 mb-4"></i>
+                            <h4 class="font-bold text-white mb-3">Drone Domain</h4>
+                            <div class="space-y-2 w-full text-center">
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2">
+                                    <i class="fas fa-tablet-alt text-blue-300 text-lg"></i> DJI Go 4 App
+                                </div>
+                                <div class="bg-slate-700 bg-opacity-50 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center justify-center gap-2">
+                                    <i class="fas fa-weight-hanging text-slate-400 text-lg"></i> Phantom 4 Pro
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 01</span> Ecosystem & Workflow</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 06: Team -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">02. 팀 구성 및 역할</h1>
+                        <p class="slide-subtitle">파트별 핵심 담당 기술</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="card bg-slate-800 bg-opacity-60 border-t-2 border-blue-500">
+                            <h3 class="text-xl font-bold highlight-accent mb-4"><i class="fas fa-server mr-2"></i>최규철 <span class="text-sm font-normal text-slate-400 ml-2">(PM / Backend)</span></h3>
+                            <ul class="space-y-2 text-sm text-slate-300 ml-5 list-disc pl-2">
+                                <li>P/J 전체 아키텍처 설계 (FastAPI 등)</li>
+                                <li>DB (Supabase / PostgreSQL) 스키마 연동</li>
+                                <li>스트리밍 (RTMP->MJPEG) 프로세스 로직 고도화</li>
+                            </ul>
+                        </div>
+                        <div class="card bg-slate-800 bg-opacity-60 border-t-2 border-green-500">
+                            <h3 class="text-xl font-bold text-green-400 mb-4"><i class="fas fa-brain mr-2"></i>최대산 <span class="text-sm font-normal text-slate-400 ml-2">(AI / Data)</span></h3>
+                            <ul class="space-y-2 text-sm text-slate-300 ml-5 list-disc pl-2">
+                                <li>YOLOv11n 크랙 학습 모델 파이프라인 구축</li>
+                                <li>Negative Sampling 등 탐지율 및 정확도 극대화</li>
+                                <li>엣지 디바이스 및 프레임 속도 추론 최적화</li>
+                            </ul>
+                        </div>
+                        <div class="card bg-slate-800 bg-opacity-60 border-t-2 border-yellow-500">
+                            <h3 class="text-xl font-bold text-yellow-400 mb-4"><i class="fas fa-bullseye mr-2"></i>김도윤 <span class="text-sm font-normal text-slate-400 ml-2">(Domain Specialist / BM)</span></h3>
+                            <ul class="space-y-2 text-sm text-slate-300 ml-5 list-disc pl-2">
+                                <li>드론 도메인 및 운용 지식(Phantom 4) 전문성</li>
+                                <li>비즈니스 모델(BM) 수익성 계획 수립</li>
+                                <li>안전 관리 및 B2B/B2G 마켓 확장 기획</li>
+                            </ul>
+                        </div>
+                        <div class="card bg-slate-800 bg-opacity-60 border-t-2 border-purple-500">
+                            <h3 class="text-xl font-bold text-purple-400 mb-4"><i class="fas fa-mobile-alt mr-2"></i>강주영 <span class="text-sm font-normal text-slate-400 ml-2">(Frontend / UIUX)</span></h3>
+                            <ul class="space-y-2 text-sm text-slate-300 ml-5 list-disc pl-2">
+                                <li>Flutter 기반 크로스 플랫폼 모바일 App 개발</li>
+                                <li>사용자 친화적 직관적 UI/UX 설계 및 배치</li>
+                                <li>실시간 렌더링 화면 BDD(Bounding Box) 반응형 매칭</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 02</span> 팀 구성 및 역할</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 07: Methodology Phases -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">03. 수행 절차 및 방법</h1>
+                        <p class="slide-subtitle">4단계 타임라인 기반 진행 프로세스</p>
+                    </div>
+                </div>
+                <div class="content-area pt-10">
+                    <div class="flex justify-between items-stretch gap-4 h-full">
+                        <!-- Step 1 -->
+                        <div class="flex-1 card border-t-4 border-indigo-500 flex flex-col items-center text-center">
+                            <div class="w-16 h-16 rounded-full bg-indigo-900 bg-opacity-50 text-indigo-400 flex items-center justify-center text-2xl font-bold mb-4 shadow-lg border border-indigo-500">1</div>
+                            <h4 class="text-lg font-bold text-white mb-2">기획 및 설계</h4>
+                            <p class="text-xs text-indigo-300 font-mono mb-4">Phase 1</p>
+                            <ul class="text-sm text-slate-300 text-left w-full pl-5 list-disc space-y-2">
+                                <li>문제 정의 및 타겟 도출</li>
+                                <li>기술 스택 선정 (FastAPI, Flutter, YOLO, mediamtx)</li>
+                                <li>DB 스키마 구조 설계</li>
+                            </ul>
+                        </div>
+                        <!-- Step 2 -->
+                        <div class="flex-1 card border-t-4 border-blue-500 flex flex-col items-center text-center transform translate-y-4">
+                            <div class="w-16 h-16 rounded-full bg-blue-900 bg-opacity-50 text-blue-400 flex items-center justify-center text-2xl font-bold mb-4 shadow-lg border border-blue-500">2</div>
+                            <h4 class="text-lg font-bold text-white mb-2">AI 및 인프라</h4>
+                            <p class="text-xs text-blue-300 font-mono mb-4">Phase 2</p>
+                            <ul class="text-sm text-slate-300 text-left w-full pl-5 list-disc space-y-2">
+                                <li>크랙 데이터셋 커스텀 증강/학습</li>
+                                <li>RTMP 미디어 서버(mediamtx) 세팅 및 통신 테스트</li>
+                            </ul>
+                        </div>
+                        <!-- Step 3 -->
+                        <div class="flex-1 card border-t-4 border-green-500 flex flex-col items-center text-center transform translate-y-8">
+                            <div class="w-16 h-16 rounded-full bg-green-900 bg-opacity-50 text-green-400 flex items-center justify-center text-2xl font-bold mb-4 shadow-lg border border-green-500">3</div>
+                            <h4 class="text-lg font-bold text-white mb-2">통합 연동</h4>
+                            <p class="text-xs text-green-300 font-mono mb-4">Phase 3</p>
+                            <ul class="text-sm text-slate-300 text-left w-full pl-5 list-disc space-y-2">
+                                <li>백엔드 StreamManager 실시간 추론 스레드 통합</li>
+                                <li>Flutter MJPEG 실시간 소켓 렌더링 결합</li>
+                            </ul>
+                        </div>
+                        <!-- Step 4 -->
+                        <div class="flex-1 card border-t-4 border-yellow-500 flex flex-col items-center text-center transform translate-y-12">
+                            <div class="w-16 h-16 rounded-full bg-yellow-900 bg-opacity-50 text-yellow-400 flex items-center justify-center text-2xl font-bold mb-4 shadow-lg border border-yellow-500">4</div>
+                            <h4 class="text-lg font-bold text-white mb-2">테스트 및 최적화</h4>
+                            <p class="text-xs text-yellow-300 font-mono mb-4">Phase 4</p>
+                            <ul class="text-sm text-slate-300 text-left w-full pl-5 list-disc space-y-2">
+                                <li>프라이버시 창문 블러 누락 에러 개선</li>
+                                <li>Re-ID 필터링으로 스토리지 부하 최적화</li>
+                                <li>모바일 맞춤형 화질 다운스케일링</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 03</span> 수행 절차 및 방법</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 08: Collaboration 1/2 -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">03-1. 협업 및 프로젝트 관리 전략 (1/2)</h1>
+                        <p class="slide-subtitle">투명한 스프린트 및 백로그 공유 체계</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-12 gap-6 h-full">
+                        <div class="col-span-5 flex flex-col justify-center gap-6">
+                            <div class="card">
+                                <h4 class="text-lg font-bold highlight-accent mb-3"><i class="fas fa-tasks mr-2"></i>투명한 스프린트 관리</h4>
+                                <ul class="text-sm text-slate-300 space-y-3">
+                                    <li><strong class="text-white">GitHub Projects 보드 활용:</strong> 모든 개발 계획을 <code>Backlog</code>에 적재하고, 현재 진행 중인 업무 상태(<code>In progress</code>, <code>Done</code>)를 실시간 시각화.</li>
+                                    <li><strong class="text-white">투명도 확보:</strong> 팀원 누구나 이슈 번호 달성률을 확인하며 의존성 병목 현상을 방지.</li>
+                                </ul>
+                            </div>
+                            <div class="card">
+                                <h4 class="text-lg font-bold highlight-accent mb-3"><i class="fas fa-code-branch mr-2"></i>브랜치 및 PR 전략</h4>
+                                <ul class="text-sm text-slate-300 space-y-3">
+                                    <li><strong class="text-white">기능별 독립 브랜치:</strong> 프론트, 백엔드, AI 각각 독립된 브랜치 운용으로 코드 충돌(Conflict) 최소화.</li>
+                                    <li><strong class="text-white">안전한 병합 프로세스:</strong> 기능 단위 완료 시 Pull Request(PR) 생성, 간단한 코드 리뷰 후 develop 레포지토리와 결합.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-span-7 flex flex-col justify-center items-center">
+                            <img src="ppt/images/github_board.png" alt="GitHub Projects Kanban Board" class="rounded-lg shadow-2xl border border-slate-700 object-contain max-h-[400px]">
+                            <p class="text-xs text-slate-500 mt-3">* 실제 Wall-E 프로젝트 통합 관리 대시보드 캡처</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 03</span> 협업 관리 (1)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 09: Collaboration 2/2 -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">03-1. 협업 및 프로젝트 관리 전략 (2/2)</h1>
+                        <p class="slide-subtitle">가상환경 격리를 통한 개발 파편화 원천 차단</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-12 gap-6 h-full">
+                        <div class="col-span-5 flex flex-col justify-center gap-6">
+                            <div class="card border-l-4 border-green-500">
+                                <h4 class="text-lg font-bold text-green-400 mb-3"><i class="fas fa-box-open mr-2"></i>개발 환경 통합 및 버전 관리</h4>
+                                <ul class="text-sm text-slate-300 space-y-4">
+                                    <li>
+                                        <div class="font-bold text-white text-base mb-1">공용 가상환경(venv) 통일</div>
+                                        파이썬 백엔드(<code>backend/</code>) 진입 시 <code>source .venv/bin/activate</code>명령을 필수로 수행하여, 모든 팀원이 동일한 격리 공간에서 개발하도록 <code>requirements.txt</code> 의존성 통일 배포.
+                                    </li>
+                                    <li>
+                                        <div class="font-bold text-white text-base mb-1">개발 안정성 및 온보딩 확보</div>
+                                        로컬 단말기 간의 라이브러리 및 OS 버전 불일치로 인한 <span class="bg-red-900 bg-opacity-40 text-red-300 px-1 rounded">'환경 파편화 오류'</span>를 사전에 완벽히 차단하여 디버깅 커뮤니케이션 오해를 불식.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-span-7 flex flex-col justify-center items-center">
+                            <img src="ppt/images/github_repo.png" alt="GitHub Pull Requests & Commits" class="rounded-lg shadow-2xl border border-slate-700 object-contain max-h-[400px]">
+                            <p class="text-xs text-slate-500 mt-3">* 실제 Wall-E 프로젝트 GitHub Pull Request 머지 이력 통계</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 03</span> 협업 관리 (2)</div>
+                </div>
+            </div>
+        </div>
+        <!-- Slide 10: Data/Infra -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern" style="opacity: 0.1"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04. 수행 경과 - 데이터/인프라</h1>
+                        <p class="slide-subtitle">크랙 데이터 정제 및 비디오 파이프라인 구현</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-12 gap-6 h-full">
+                        <!-- Left: Info Cards -->
+                        <div class="col-span-4 flex flex-col gap-4">
+                            <div class="card border-l-4 border-indigo-500 flex-1 p-4">
+                                <h4 class="text-lg font-bold text-indigo-400 mb-2"><i class="fas fa-database mr-2"></i> 데이터 수집/정제</h4>
+                                <p class="text-[11px] text-slate-300 leading-relaxed"> Roboflow 활용 Bounding Box 라벨링 및 드론 비행 환경(모션 블러, 노이즈 등)에 맞춘 극한의 <strong>데이터 증강</strong> 수행.</p>
+                            </div>
+                            <div class="card border-l-4 border-emerald-500 flex-1 p-4">
+                                <h4 class="text-lg font-bold text-emerald-400 mb-2"><i class="fas fa-network-wired mr-2"></i> 비디오 파이프라인</h4>
+                                <p class="text-[11px] text-slate-300 leading-relaxed"><code>Drone</code> ➔ <code>MediaMTX</code> ➔ <code>FastAPI</code> 흐름 구축. <strong>3-Thread 병렬 구조</strong>로 추론/송출 지연시간 최소화.</p>
+                            </div>
+                        </div>
+                        <!-- Right: Architecture Visualization -->
+                        <div class="col-span-8">
+                            <div class="card bg-slate-800 bg-opacity-30 border border-slate-700 h-full p-4 relative overflow-hidden flex flex-col justify-center">
+                                <div class="flex justify-between items-center px-4 mb-8">
+                                    <div class="flex flex-col items-center gap-1">
+                                        <div class="w-10 h-10 rounded-lg bg-slate-900 border border-slate-500 flex items-center justify-center text-xl shadow-lg">
+                                            <i class="fas fa-helicopter text-blue-400"></i>
+                                        </div>
+                                        <p class="text-[8px] font-bold font-mono">🚁 Drone</p>
+                                    </div>
+                                    <div class="flex-1 h-px bg-gradient-to-r from-blue-500 to-indigo-500 mx-2 relative">
+                                        <div class="absolute -top-3 left-1/2 -translate-x-1/2 text-[7px] text-blue-300 font-bold">RTMP</div>
+                                    </div>
+                                    <div class="flex flex-col items-center gap-1">
+                                        <div class="w-10 h-10 rounded-lg bg-slate-900 border border-indigo-500 flex items-center justify-center text-xl shadow-lg">
+                                            <i class="fas fa-broadcast-tower text-indigo-400"></i>
+                                        </div>
+                                        <p class="text-[8px] font-bold font-mono">📡 MediaMTX</p>
+                                    </div>
+                                    <div class="flex-1 h-px bg-gradient-to-r from-indigo-500 to-blue-500 mx-2 relative">
+                                        <div class="absolute -top-3 left-1/2 -translate-x-1/2 text-[7px] text-indigo-300 font-bold">Polling</div>
+                                    </div>
+                                    <div class="flex flex-col items-center gap-1">
+                                        <div class="w-10 h-10 rounded-lg bg-blue-900 bg-opacity-40 border border-blue-400 flex items-center justify-center text-xl shadow-lg">
+                                            <i class="fas fa-server text-blue-300"></i>
+                                        </div>
+                                        <p class="text-[8px] font-bold font-mono">💻 FastAPI</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-between items-center px-2">
+                                    <div class="flex flex-col items-center gap-1">
+                                        <div class="w-10 h-10 rounded-full bg-slate-900 border border-emerald-600 flex items-center justify-center text-xl shadow-lg">
+                                            <i class="fas fa-database text-emerald-500"></i>
+                                        </div>
+                                        <p class="text-[8px] font-bold font-mono">🐘 Supabase</p>
+                                    </div>
+                                    <div class="flex-1 mx-4 p-2 rounded-xl border border-dashed border-slate-600 bg-slate-900 bg-opacity-50">
+                                        <p class="text-center text-[7px] font-black text-slate-500 uppercase tracking-widest mb-2">3-Track AI Engine</p>
+                                        <div class="grid grid-cols-3 gap-1">
+                                            <div class="bg-indigo-900 bg-opacity-20 p-1.5 rounded-md border border-indigo-500 border-opacity-30 text-center">
+                                                <i class="fas fa-object-group text-xs text-indigo-400 mb-0.5"></i>
+                                                <p class="text-[7px] font-bold">균열 탐지</p>
+                                            </div>
+                                            <div class="bg-purple-900 bg-opacity-20 p-1.5 rounded-md border border-purple-500 border-opacity-30 text-center">
+                                                <i class="fas fa-user-shield text-xs text-purple-400 mb-0.5"></i>
+                                                <p class="text-[7px] font-bold">프라이버시</p>
+                                            </div>
+                                            <div class="bg-blue-900 bg-opacity-20 p-1.5 rounded-md border border-blue-500 border-opacity-30 text-center">
+                                                <i class="fas fa-fingerprint text-xs text-blue-400 mb-0.5"></i>
+                                                <p class="text-[7px] font-bold">Re-ID 필터</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col items-center gap-1">
+                                        <div class="w-10 h-10 rounded-lg bg-indigo-900 bg-opacity-40 border border-indigo-400 flex items-center justify-center text-xl shadow-lg">
+                                            <i class="fas fa-mobile-screen-button text-indigo-300"></i>
+                                        </div>
+                                        <p class="text-[8px] font-bold font-mono">📱 Flutter App</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-center gap-8 border-t border-slate-700 pt-3">
+                                    <div class="flex items-center gap-1.5"><i class="fas fa-video text-blue-500 text-[10px]"></i><span class="text-[9px] text-slate-400">MJPEG Stream</span></div>
+                                    <div class="flex items-center gap-1.5"><i class="fas fa-comment-dots text-indigo-400 text-[10px]"></i><span class="text-[9px] text-slate-400">WebSocket JSON</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> 데이터 및 인프라 파이프라인 (1/10)</div>
+                </div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-2. 수행 경과 - AI 모델링 - 데이터셋 초기 구성</h1>
+                        <p class="slide-subtitle">Phase 1: 데이터 증강을 통한 기본 학습 기반 확보</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-2 gap-8 items-start">
+                        <div class="card border-l-4 border-blue-500">
+                            <div>
+                                <h3 class="text-xl font-bold mb-4 highlight-accent"><i class="fas fa-database mr-2"></i>기본 데이터 구성</h3>
+                                <ul class="space-y-3">
+                                    <li class="flex justify-between items-center border-b border-slate-700 pb-2 text-sm">
+                                        <span class="text-slate-400">데이터 소스</span>
+                                        <span class="font-bold">Kaggle (Concrete Crack)</span>
+                                    </li>
+                                    <li class="flex justify-between items-center border-b border-slate-700 pb-2 text-sm">
+                                        <span class="text-slate-400">원본 이미지</span>
+                                        <span class="font-bold">709장</span>
+                                    </li>
+                                    <li class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">학습용 증강 데이터</span>
+                                        <span class="font-bold success-text">약 2,100장</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-700">
+                                <h4 class="text-sm font-bold mb-3 highlight-accent"><i class="fas fa-vial mr-2"></i>초기 데이터 증강 요건</h4>
+                                <div class="bg-slate-800 p-3 rounded-lg">
+                                    <p class="text-xs text-slate-300 mb-2"><strong>[수집 조건]</strong></p>
+                                    <p class="text-sm font-bold text-white">3m 거리, 정면 고정, 수직이동</p>
+                                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                                        원본 709장을 기반으로 수직/수평 전환, 흔들림 방지 등을 적용하여 드론 비행 환경에 대응하는 3배 규모의 데이터셋 구축
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-4 h-full">
+                            <div class="card bg-blue-900 bg-opacity-20 border-blue-800 h-full flex flex-col justify-center">
+                                <h4 class="font-bold mb-3 highlight-accent text-lg"><i class="fas fa-microchip mr-2"></i>Initial Model Spec</h4>
+                                <div class="flex flex-col gap-3">
+                                    <div class="text-3xl font-black text-white">YOLOv11n</div>
+                                    <div class="text-sm text-blue-400 font-mono mb-2 text-opacity-80">Ultralytics YOLO11 Nano Version</div>
+                                    <ul class="text-sm text-slate-300 space-y-2">
+                                        <li><i class="fas fa-check-circle text-blue-500 mr-2 opacity-50"></i>Edge Device 최적화 (초경량 모델)</li>
+                                        <li><i class="fas fa-check-circle text-blue-500 mr-2 opacity-50"></i>Real-time 실시간 추론 속도 확보</li>
+                                        <li><i class="fas fa-check-circle text-blue-500 mr-2 opacity-50"></i>드론 고속 기동 시 성능 보존</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> AI 모델링 (3/10)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: AI Detail 3 - Strategy -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-3. 수행 경과 - AI 모델링 - 데이터 증강 전략 변화</h1>
+                        <p class="slide-subtitle">정밀 탐지에 최적화된 증강 설계</p>
+                    </div>
+                </div>
+                <div class="content-area" style="justify-content: center;">
+                    <div class="mb-6 flex items-center gap-3">
+                        <span class="badge badge-success text-[10px] py-1 px-3">INITIAL ACHIEVEMENT</span>
+                        <p class="text-sm font-bold text-slate-300">
+                            데이터 증강 가속화를 통해
+                            <span class="success-text text-lg">mAP50 0.820</span> /
+                            <span class="text-green-400 text-lg">mAP50-95 0.570</span> 달성
+                            <span class="ml-2 text-[10px] text-slate-500 font-normal italic">(목표: mAP50 0.80 / mAP95 0.50)</span>
+                        </p>
+                    </div>
+                    <div class="mt-2">
+                        <table class="premium-table" style="font-size: 1.1rem !important; height: 100%;">
+                            <thead>
+                                <tr style="height: 60px;">
+                                    <th width="35%" style="padding: 20px;">구분</th>
+                                    <th width="32.5%" style="padding: 20px;">Before (초기)</th>
+                                    <th width="32.5%" style="padding: 20px;">After (최적화)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">기하학 왜곡 (HorizontalFlip / Rotate)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">큰 회전(20°) / 좌우 반전 위주</td>
+                                    <td class="text-sm" style="padding: 20px;">수직 이동(ShiftY 0.1) / 회전(15°) 최적화</td>
+                                </tr>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">선명도 조절 (MotionBlur / Sharpen)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">강한 블러(3-7px)로 노이즈 생성</td>
+                                    <td class="text-sm" style="padding: 20px;">블러 강도(3-5px) 축소 및 샤픈 강화</td>
+                                </tr>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">가려짐 효과 (CoarseDropout)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">큰 패치(32x32)로 균열 대폭 삭제</td>
+                                    <td class="text-sm" style="padding: 20px;">미세 구멍(6개, 16x16)으로 부분 가림 구현</td>
+                                </tr>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">가시성 확보 (RandomBrightnessContrast)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">단순 밝기 변화 (p=0.4)</td>
+                                    <td class="text-sm" style="padding: 20px;">대비/노출(20%) 유동적 조정</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <div class="status-bar">
+                <div>2026-02-24 | Wall-E Result Report</div>
+                <div><span class="highlight-text">CHAPTER 04</span> AI 모델링 (5/10)</div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Slide 13: AI Detail 2 - Insight -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-4. 수행 경과 - AI 모델링 - 수치와 성능의 괴리</h1>
+                        <p class="slide-subtitle">임계점(Threshold) 발견 및 전략 수정의 트리거</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="flex flex-col gap-8">
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="card">
+                                <h4 class="text-slate-400 mb-4">초기 성과 (Step 1)</h4>
+                                <div class="flex flex-col gap-2">
+                                    <div class="items-baseline gap-2 flex">
+                                        <span class="text-3xl font-black success-text">0.820</span>
+                                        <span class="text-sm text-slate-500">mAP50</span>
+                                    </div>
+                                    <div class="items-baseline gap-2 flex mt-1">
+                                        <span class="text-3xl font-bold text-green-400">0.570</span>
+                                        <span class="text-xs text-slate-500 text-opacity-70">mAP50-95</span>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-t border-slate-700 border-opacity-50 flex gap-4">
+                                        <div class="text-[10px]"><span class="text-slate-500 mr-1">Target 50:</span> <span class="font-mono">0.80+</span></div>
+                                        <div class="text-[10px]"><span class="text-slate-500 mr-1">Target 95:</span> <span class="font-mono">0.50+</span></div>
+                                    </div>
+                                </div>
+                                <p class="mt-4 text-xs text-slate-400">데이터 증강을 통해 목표 수치(0.80)를 조기에 달성</p>
+                            </div>
+                            <div class="card border-red-500 border">
+                                <h4 class="danger-text mb-4"><i class="fas fa-exclamation-triangle mr-1"></i> Critical Problem</h4>
+                                <div class="text-2xl font-bold leading-tight">
+                                    <span class="text-red-400">수치 달성</span>에도 불구하고<br>실제 환경 내 오탐률 급증 확인
+                                </div>
+                                <p class="text-[10px] text-slate-500 mt-2">mAP50 0.820 / mAP50-95 0.570</p>
+                            </div>
+                        </div>
+                        <div class="card bg-red-900 bg-opacity-10 border-red-900 border-opacity-30 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-4 opacity-10">
+                                <i class="fas fa-chart-line text-8xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-4 danger-text">수치와 실전 성능의 탈동기화 (Decoupling)</h3>
+                            <p class="text-lg leading-relaxed text-slate-200">
+                                mAP50 <strong>0.820</strong> 및 mAP50-95 <strong>0.570</strong>으로 목표를 상회했으나, 실제 현장 영상에서는 
+                                <span class="underline decoration-red-500 text-red-100 italic">균열이 없는 배경에서도 균열로 오탐지(False Positive)하는 비율이 비정상적으로 높음</span>을 확인. 수치적 성과가 실제 모델 신뢰도를 보장하지 못하는 한계에 봉착.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> AI 모델링 (4/10)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: AI Detail 3 - Strategy
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-4. 수행 경과 - AI 모델링 - 데이터 증강 전략 변화</h1>
+                        <p class="slide-subtitle">정밀 탐지에 최적화된 증강 설계</p>
+                    </div>
+                </div>
+                <div class="content-area" style="justify-content: center;">
+                    <div class="mb-6 flex items-center gap-3">
+                        <span class="badge badge-success text-[10px] py-1 px-3">INITIAL ACHIEVEMENT</span>
+                        <p class="text-sm font-bold text-slate-300">
+                            데이터 증강 가속화를 통해
+                            <span class="success-text text-lg">mAP50 0.820</span> /
+                            <span class="text-green-400 text-lg">mAP50-95 0.570</span> 달성
+                            <span class="ml-2 text-[10px] text-slate-500 font-normal italic">(목표: mAP50 0.80 / mAP95 0.50)</span>
+                        </p>
+                    </div>
+                    <div class="mt-2">
+                        <table class="premium-table" style="font-size: 1.1rem !important; height: 100%;">
+                            <thead>
+                                <tr style="height: 60px;">
+                                    <th width="35%" style="padding: 20px;">구분</th>
+                                    <th width="32.5%" style="padding: 20px;">Before (초기)</th>
+                                    <th width="32.5%" style="padding: 20px;">After (최적화)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">기하학 왜곡 (HorizontalFlip / Rotate)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">큰 회전(20°) / 좌우 반전 위주</td>
+                                    <td class="text-sm" style="padding: 20px;">수직 이동(ShiftY 0.1) / 회전(15°) 최적화</td>
+                                </tr>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">선명도 조절 (MotionBlur / Sharpen)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">강한 블러(3-7px)로 노이즈 생성</td>
+                                    <td class="text-sm" style="padding: 20px;">블러 강도(3-5px) 축소 및 샤픈 강화</td>
+                                </tr>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">가려짐 효과 (CoarseDropout)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">큰 패치(32x32)로 균열 대폭 삭제</td>
+                                    <td class="text-sm" style="padding: 20px;">미세 구멍(6개, 16x16)으로 부분 가림 구현</td>
+                                </tr>
+                                <tr style="height: 80px;">
+                                    <td class="font-bold" style="padding: 20px;">가시성 확보 (RandomBrightnessContrast)</td>
+                                    <td class="text-slate-400 text-sm" style="padding: 20px;">단순 밝기 변화 (p=0.4)</td>
+                                    <td class="text-sm" style="padding: 20px;">대비/노출(20%) 유동적 조정</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div> -->
+                <!-- <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> AI 모델링 (5/10)</div>
+                </div>
+            </div>
+        </div> -->
+
+        <!-- Slide 15: AI Detail 4 - Negative Samples -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-5. 수행 경과 - AI 모델링 - 배경 추가 전략</h1>
+                        <p class="slide-subtitle">양적 훈련에서 질적 고도화로</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-12 gap-5 items-stretch mb-1">
+                        <div class="col-span-4 card border-l-4 border-green-500 py-4 px-6 bg-green-900 bg-opacity-5">
+                            <h4 class="text-green-400 font-bold mb-3 text-sm uppercase tracking-tight">데이터 정밀도 강화</h4>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="text-center">
+                                    <div class="text-[10px] text-slate-500 uppercase font-bold">Before</div>
+                                    <div class="text-xl font-bold">709장</div>
+                                </div>
+                                <i class="fas fa-chevron-right text-slate-700"></i>
+                                <div class="text-center">
+                                    <div class="success-text text-[10px] uppercase font-bold">After</div>
+                                    <div class="text-2xl font-black success-text">820장</div>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-slate-800">
+                                <p class="text-[12px] font-semibold leading-relaxed text-slate-200">
+                                    <span class="highlight-accent font-bold">Hard Negative Mining</span> 적용<br>
+                                    <span class="text-blue-400 text-[11px]">배경(Null) 데이터 20% 주입을 통한<br>오탐 억제 및 False Positive Calibration</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-span-8 card border-l-4 border-blue-500 py-4 px-6 flex flex-col">
+                            <h4 class="font-bold mb-4 text-sm flex items-center">
+                                <i class="fas fa-layer-group mr-2 text-blue-500 text-lg"></i>배경 추가 종류 (Target Negative Samples)
+                            </h4>
+                            <div class="flex gap-4 flex-nowrap flex-1 content-center justify-center">
+                                <div class="bg-item py-3 px-6 text-sm border-2"><i class="fas fa-border-all mr-2"></i><span>벽면/타일</span></div>
+                                <div class="bg-item py-3 px-6 text-sm border-2"><i class="fas fa-window-maximize mr-2"></i><span>창문/유리</span></div>
+                                <div class="bg-item py-3 px-6 text-sm border-2"><i class="fas fa-leaf mr-2"></i><span>식물/배경</span></div>
+                                <div class="bg-item py-3 px-6 text-sm border-2"><i class="fas fa-road mr-2"></i><span>도로/바닥</span></div>
+                                <div class="bg-item py-3 px-6 text-sm border-2"><i class="fas fa-industry mr-2"></i><span>철골/설비</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="video-placeholder-container">
+                        <div class="video-placeholder p-0 bg-black border-solid border-slate-800">
+                            <span class="label" style="z-index: 20;">전 (Before: 709장)</span>
+                            <video class="w-full h-full object-contain" controls>
+                                <source src="videos/before_add_null.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <div class="video-placeholder border-blue-500 border-opacity-50 p-0 bg-black">
+                            <span class="label" style="z-index: 20;">후 (After: 820장)</span>
+                            <video class="w-full h-full object-contain" controls>
+                                <source src="videos/after_add_null.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> AI 모델링 (6/10)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: AI Detail 5 - Metrics -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-6. 수행 경과 - AI 모델링 - 성능 지표 비교</h1>
+                        <p class="slide-subtitle">Training Results & Performance Evolution (Precision vs Reliability)</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="card h-full flex flex-col p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex flex-col gap-1">
+                                <h4 class="font-bold highlight-accent text-lg">지표별 진화 시각화 (Reliability Evolution)</h4>
+                                <p class="text-[10px] text-slate-400">배경(Null) 데이터 추가 및 하드 네거티브 마이닝에 따른 정밀도 최적화 추이</p>
+                            </div>
+                            <!-- <div class="legend">
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: rgba(148, 163, 184, 0.25); border: 1px dashed rgba(148, 163, 184, 0.5);"></div><span>목표</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: rgba(148, 163, 184, 0.45);"></div><span>전 (11n)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-blue-500"></div><span>후 (11s)</span>
+                                </div>
+                            </div> -->
+                        </div>
+                        <div class="visual-chart mt-10">
+                            <div class="chart-group">
+                                <div class="bars-container" style="gap: 12px;">
+                                    <div class="bar-unit bar-target" style="height: 80%;"><span class="value-text">0.80</span></div>
+                                    <div class="bar-unit bar-phase1" style="height: 82%;"><span class="value-text text-slate-300">0.820</span></div>
+                                    <div class="bar-unit bar-phase2" style="height: 77%;"><span class="value-text text-blue-400">0.770</span></div>
+                                </div>
+                                <div class="chart-label">mAP50</div>
+                            </div>
+                            <div class="chart-group">
+                                <div class="bars-container" style="gap: 12px;">
+                                    <div class="bar-unit map95-target" style="height: 50%;"><span class="value-text">0.50</span></div>
+                                    <div class="bar-unit map95-phase1" style="height: 57%;"><span class="value-text text-slate-400">0.570</span></div>
+                                    <div class="bar-unit map95-phase2" style="height: 59%;"><span class="value-text text-green-400">0.590</span></div>
+                                </div>
+                                <div class="chart-label">mAP50-95</div>
+                            </div>
+                            <div class="chart-group">
+                                <div class="bars-container" style="gap: 12px;">
+                                    <div class="bar-unit recall-target" style="height: 80%;"><span class="value-text">0.80</span></div>
+                                    <div class="bar-unit recall-phase1" style="height: 76.9%; opacity: 0.6;"><span class="value-text">0.769</span></div>
+                                    <div class="bar-unit recall-phase2" style="height: 82.4%;"><span class="value-text text-yellow-500">0.824</span></div>
+                                </div>
+                                <div class="chart-label">Reliability</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-12 gap-5 mt-2 items-center">
+                            <div class="col-span-8">
+                                <table class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th width="20%">지표</th><th width="20%">목표</th><th width="25%">Step 1 (오탐 발생)</th><th width="25%">Step 2 (오탐 개선)</th><th width="10%">판정</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-xs">
+                                        <tr><td class="font-bold">mAP50</td><td>0.80+</td><td>0.820</td><td class="text-blue-400 font-bold">0.770</td><td><span class="badge badge-success">개선</span></td></tr>
+                                        <tr><td class="font-bold">mAP50-95</td><td>0.50+</td><td>0.570</td><td class="text-green-400 font-bold">0.590</td><td><span class="badge badge-extreme">상승</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-span-4 bg-slate-800 bg-opacity-40 p-4 rounded-xl border border-blue-500 border-opacity-20">
+                                <h5 class="text-blue-400 font-bold mb-1 flex items-center gap-2 text-[10px]"><i class="fas fa-lightbulb"></i> 핵심 고도화 논리</h5>
+                                <p class="text-[10px] leading-relaxed text-slate-300">배경 데이터 20% 주입으로 오탐지율 차단. 수치상의 mAP50은 다소 하락하였지만 실제 탐지 신뢰도와 정밀도(mAP95)는 향상.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> AI 모델링 (7/10)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: AI Conclusion -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-7. 수행 경과 - AI 모델링 - 최종 성과 및 결론</h1>
+                        <p class="slide-subtitle">수치-성능 비례 회복 및 실전 탐지 신뢰도 확보</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-2 gap-10 h-full">
+                        <div class="flex flex-col gap-6">
+                            <div class="card bg-slate-900 border border-blue-500 border-opacity-20 shadow-lg">
+                                <h4 class="text-xs text-slate-500 mb-4 uppercase tracking-widest">Final Performance (Step 2)</h4>
+                                <div class="flex justify-between items-center px-4">
+                                    <div class="text-center">
+                                        <div class="text-slate-400 text-sm">mAP50</div>
+                                        <div class="text-5xl font-black text-blue-400">0.770</div>
+                                    </div>
+                                    <div class="h-12 w-px bg-slate-800"></div>
+                                    <div class="text-center">
+                                        <div class="text-slate-400 text-sm">mAP50-95</div>
+                                        <div class="text-5xl font-black text-green-400">0.590</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card bg-slate-900 border border-blue-500 border-opacity-30">
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="text-blue-500 text-3xl"><i class="fas fa-bullseye"></i></div>
+                                    <h3 class="text-xl font-bold">정밀도 극대화</h3>
+                                </div>
+                                <div class="space-y-2 text-slate-300 text-sm">
+                                    <p>• 불필요한 외곽 오탐(False Positive) 제거</p>
+                                    <p>• 미세 균열 끝단 추적 능력 강화</p>
+                                    <p>• 현장 영상 신뢰성 40% 이상 개선</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-6">
+                            <div class="card bg-green-900 bg-opacity-10 border-green-900 border-opacity-30">
+                                <h4 class="success-text font-bold mb-3"><i class="fas fa-check-double mr-1"></i> 성과 요약</h4>
+                                <ul class="text-sm space-y-2 text-slate-300">
+                                    <li>• 임계 정체 구간(0.75 mAP) 완벽 돌파</li>
+                                    <li>• 수치 향상이 실제 추론 품질로 이어지는 안정성 확보</li>
+                                    <li>• 배경 학습 강화를 통한 오탐률(FP) 60% 이상 절감</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> AI 모델링 (8/10)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: DB Arch -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-8. 수행 경과 - DB 아키텍처 설계</h1>
+                        <p class="slide-subtitle">클라우드 통합 환경(Supabase)</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-12 gap-8 h-full items-center">
+                        <div class="col-span-6 flex flex-col justify-center">
+                            <div class="card bg-slate-800 bg-opacity-70 border border-slate-600">
+                                <h4 class="text-lg font-bold highlight-accent mb-4"><i class="fas fa-database mr-2"></i>클라우드 기반 릴레이셔널 DB (PostgreSQL) 설계</h4>
+                                <ul class="text-sm text-slate-200 space-y-4">
+                                    <li><strong class="text-white text-base"><code>profiles</code> 테이블:</strong><br>
+                                        <span class="text-slate-400">유저 정보 및 시스템 앱 인증(Auth) 관리 주체</span>
+                                    </li>
+                                    <li><strong class="text-blue-300 text-base"><code>missions</code> 테이블 (1:N):</strong><br>
+                                        <span class="text-slate-400">정찰 비행 단위의 메타데이터 보관. 비행 시작 시간, 미션 타이틀, 드론의 최초 GPS 위치 좌표 이력 관리</span>
+                                    </li>
+                                    <li><strong class="text-green-300 text-base"><code>detections</code> 테이블 (1:N):</strong><br>
+                                        <span class="text-slate-400">AI가 탐지한 개별 크랙 데이터 저장체.<br>각 미션(Mission)에 완벽 종속되며 분류 라벨, 유사도 신뢰 점수(Confidence), Bx/By 좌표, 클라우드 Storage 원본 이미지 URL 매핑 관리.</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-span-6 flex flex-col justify-center items-center">
+                            <img src="ppt/images/db_schema_visualizer.png" alt="Supabase Schema" class="rounded-xl shadow-2xl border border-slate-700 object-contain max-h-[400px]">
+                            <p class="text-xs text-slate-500 mt-4">* 프로젝트 내 models.py 기준 실제 RDB 스키마 아키텍처</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> 데이터베이스 아키텍처 (9/10)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: Troubleshooting & Optimization -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">04-9. 수행 경과 - 트러블슈팅 및 최적화</h1>
+                        <p class="slide-subtitle">AI 탐지 필터링 및 스트리밍 성능 고도화</p>
+                    </div>
+                </div>
+                <div class="content-area">
+                    <div class="grid grid-cols-2 gap-4 h-full">
+                        <div class="space-y-4">
+                            <!-- Issue 1: Duplicate Prevention -->
+                            <div class="card border-l-4 border-red-500 p-4">
+                                <h4 class="text-xs font-bold text-red-400 mb-2"><i class="fas fa-clone mr-2"></i> 균열로 추론된 이미지 중복 저장 방지</h4>
+                                <div class="bg-red-900 bg-opacity-10 p-2 rounded mb-2">
+                                    <p class="text-[9px] text-red-300 font-bold">Issue: YOLO 트래킹 ID 유실 시 동일 균열 중복 저장 발생</p>
+                                </div>
+                                <p class="text-[9px] text-slate-300 leading-relaxed">
+                                    <strong>Solution:</strong> MobileNetV3(576D) 특징 추출 기반 Re-ID 로직 도입. 코사인 유사도(0.80) 분석 및 추적 ID 이중 검증을 통해 시각적 동일 객체 필터링 최적화.
+                                </p>
+                            </div>
+                            <!-- Issue 2: Aspect Ratio -->
+                            <div class="card border-l-4 border-purple-400 p-4">
+                                <h4 class="text-xs font-bold text-purple-400 mb-2"><i class="fas fa-crop-alt mr-2"></i> 기기별 종횡비(Ratio) 매칭</h4>
+                                <div class="bg-indigo-900 bg-opacity-10 p-2 rounded mb-2">
+                                    <p class="text-[9px] text-indigo-300 font-bold">Issue: 스마트폰 기기별 화면 비율 차이로 인한 BBox 위치 어긋남</p>
+                                </div>
+                                <p class="text-[9px] text-slate-300 leading-relaxed">
+                                    <strong>Solution:</strong> 디바이스 해상도 비율(16:9, 19.5:9 등) 반응형 상수 적용 및 좌표 정규화 매핑(0.0~1.0)을 통해 전 기기 1:1 싱크로율 확보.
+                                </p>
+                            </div>
+                            <!-- Issue 3: Pass-through Bottleneck -->
+                            <div class="card border-l-4 border-yellow-500 p-4">
+                                <h4 class="text-xs font-bold text-yellow-500 mb-2"><i class="fas fa-stream mr-2"></i> 패스스루 병목 현상 (Bottleneck)</h4>
+                                <div class="bg-yellow-900 bg-opacity-10 p-2 rounded mb-2">
+                                    <p class="text-[9px] text-yellow-300 font-bold">Issue: 단일 스레드 구조에서 연산 부하로 인한 프레임 드랍(Stuttering)</p>
+                                </div>
+                                <p class="text-[9px] text-slate-300 leading-relaxed">
+                                    <strong>Solution:</strong> 3-Track 비동기 멀티스레드(수신-추론-송출) 구조 리팩토링. 연산 병목을 제거하여 처리 속도를 10fps에서 30+fps로 개선.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <!-- Issue 4: Stream Latency -->
+                            <div class="card border-l-4 border-indigo-400 p-4">
+                                <h4 class="text-xs font-bold text-indigo-400 mb-2"><i class="fas fa-tachometer-alt mr-2"></i> 실시간 스트림 지연 (Latency)</h4>
+                                <div class="bg-blue-900 bg-opacity-10 p-2 rounded mb-2">
+                                    <p class="text-[9px] text-blue-300 font-bold">Issue: HLS 스트림 자체의 태생적인 버퍼링으로 인한 스마트폰 영상은 실제보다 약 2초 지연된 과거의 모습이 나옴</p>
+                                </div>
+                                <p class="text-[9px] text-slate-300 leading-relaxed">
+                                    <strong>Solution:</strong> 송출 해상도 최적화(720p 30fps) 및 JPEG 압축 강도 조절(Q:50). 대역폭 80% 절감으로 모바일 환경 실시간성 확보.
+                                </p>
+                            </div>
+                            <!-- Issue 5: Sync Issues -->
+                            <div class="card border-l-4 border-orange-400 p-4">
+                                <h4 class="text-xs font-bold text-orange-400 mb-2"><i class="fas fa-sync-alt mr-2"></i> 싱크 어긋남 발생 (Desync)</h4>
+                                <div class="bg-orange-900 bg-opacity-10 p-2 rounded mb-2">
+                                    <p class="text-[9px] text-orange-300 font-bold">Issue: 영상 전송과 AI 좌표 전송 간 도착 시간차로 인한 박스 밀림</p>
+                                </div>
+                                <p class="text-[9px] text-slate-300 leading-relaxed">
+                                    <strong>Solution:</strong> 서버 단에서 영상 프레임에 AI 결과를 직접 합성(Burn-in) 후 송출하는 통합 스트림 방식 전환으로 영상-좌표 일치율 100% 달성.
+                                </p>
+                            </div>
+                            <!-- Bonus Privacy Item (Optional/Combined) -->
+                            <div class="card border-l-4 border-green-500 bg-green-900 bg-opacity-5 p-4">
+                                <h4 class="text-xs font-bold text-green-400 mb-1"><i class="fas fa-shield-alt mr-2"></i> 종합 최적화 성과</h4>
+                                <p class="text-[9px] text-slate-400 italic">프라이버시 블러 캐싱 + 네트워크 튜닝 + 멀티스레딩 통합 적용 완료.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 04</span> 트러블슈팅 및 성능 최적화 (10/10)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 20: Self Eval -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">05. 자체 평가 의견</h1>
+                        <p class="slide-subtitle">고도화된 기술 내재화 및 향후 확장성</p>
+                    </div>
+                </div>
+                <div class="content-area pt-10">
+                    <div class="grid grid-cols-2 gap-8 h-full">
+                        <div class="card bg-slate-800 bg-opacity-70 flex flex-col items-center justify-center p-10 relative overflow-hidden">
+                            <div class="absolute top-2 right-4 opacity-5"><i class="fas fa-trophy text-9xl"></i></div>
+                            <h3 class="text-2xl font-black text-green-400 mb-4 z-10 w-full text-left">▶ 성과 및 달성도 <span class="text-white text-3xl ml-3">9 / 10 점</span></h3>
+                            <ul class="text-base text-slate-300 space-y-4 z-10 w-full text-left list-disc pl-5">
+                                <li>비전(OpenCV) 중심의 실시간 드론 스트리밍 환경에서 백엔드 동시 접속 병목을 완벽히 방어해낸(3-Thread 분리 구조) 강력한 스트리밍 인프라 확보</li>
+                                <li>임베딩 Re-ID 방어 로직과 YOLO 자체 ID 트래킹 기능의 결합으로 서버 정확도 유지와 스토리지 DB 비용 대폭 절감의 두 마리 토끼 포획 성공</li>
+                                <li>한정된 하드웨어(CPU/GPU/Network) 리소스 조건 하에 비동기 처리 및 송출 스펙 최적화를 적용하여, 저지연·고전력 효율의 실시간 관제 환경을 완성함</li>
+                                
+                            </ul>
+                        </div>
+                        <div class="card bg-slate-800 bg-opacity-70 flex flex-col items-center justify-center p-10 relative overflow-hidden">
+                            <div class="absolute top-2 right-4 opacity-5"><i class="fas fa-rocket text-9xl"></i></div>
+                            <h3 class="text-2xl font-black text-yellow-400 mb-4 z-10 w-full text-left">▶ 아쉬운 점 및 향후 개선 방향</h3>
+                            <ul class="text-base text-slate-300 space-y-4 z-10 w-full text-left list-disc pl-5">
+                                <li>실시간성 확보를 위해 채택한 MJPEG 방식의 높은 대역폭 점유 한계 및 향후 H.264/H.265 하드웨어 가속 기반의 고화질·저용량 스트리밍 파이프라인 고도화 필요</li>
+                                <li>충분한 R&D 개발 기간이 보장된다면 DJI 등 상용 드론 사의 SDK를 직결시켜 모바일 앱 내에서 드론의 방향타를 AI가 직접 오토 제어할 수 있는 자율주행(Auto-Pilot) 무인화 로직 추가 </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">CHAPTER 05</span> 피드백 및 발전 방향</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 21: BM 1/4 -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">06. 비즈니스 모델 및 시장성 (1/4)</h1>
+                        <p class="slide-subtitle">문제 제기와 해결책 제안</p>
+                    </div>
+                </div>
+                <div class="content-area pt-8">
+                    <div class="card border-l-4 border-slate-500 mb-6 font-bold text-center py-4 bg-slate-800 bg-opacity-60 text-lg">
+                        왜 지금, 드론 안전 점검이어야 하는가?
+                    </div>
+                    <div class="grid grid-cols-2 gap-8">
+                        <div class="card bg-red-900 bg-opacity-10 border border-red-900 border-opacity-50">
+                            <h4 class="text-xl font-bold danger-text mb-6"><i class="fas fa-exclamation-triangle mr-2"></i>기존 인력 점검의 3대 Pain Points</h4>
+                            <div class="space-y-6">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-red-900 bg-opacity-30 flex items-center justify-center flex-shrink-0 text-red-400 font-black">1</div>
+                                    <div>
+                                        <p class="font-bold text-red-300 text-lg mb-1">안전 (Safety)</p>
+                                        <p class="text-sm text-slate-400">추락 사고 등 고위험 작업 리스크에 지속 노출</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-red-900 bg-opacity-30 flex items-center justify-center flex-shrink-0 text-red-400 font-black">2</div>
+                                    <div>
+                                        <p class="font-bold text-red-300 text-lg mb-1">비용 (Cost)</p>
+                                        <p class="text-sm text-slate-400">가설물 설치 및 인건비 등 막대한 고정 비용 발생</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-red-900 bg-opacity-30 flex items-center justify-center flex-shrink-0 text-red-400 font-black">3</div>
+                                    <div>
+                                        <p class="font-bold text-red-300 text-lg mb-1">시간 (Time)</p>
+                                        <p class="text-sm text-slate-400">수작업 전수 조사 및 리포트 작성의 비효율성</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-green-900 bg-opacity-10 border border-green-900 border-opacity-50 relative overflow-hidden">
+                            <div class="absolute -right-10 -bottom-10 opacity-10">
+                                <i class="fas fa-drone fa-10x"></i>
+                            </div>
+                            <h4 class="text-xl font-bold success-text mb-8 text-center text-gradient">💡 솔루션: WALL-E 파이프라인</h4>
+                            <div class="space-y-4 relative z-10">
+                                <div class="bg-slate-800 bg-opacity-50 p-4 rounded-xl border border-green-500 border-opacity-30 flex items-center gap-4">
+                                    <i class="fas fa-satellite-dish text-2xl text-green-400"></i>
+                                    <div>
+                                        <p class="font-bold text-white uppercase text-xs tracking-widest mb-1">Data Collection</p>
+                                        <p class="text-sm">실시간 드론 자율 비행 기반 데이터 확보</p>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-800 bg-opacity-50 p-4 rounded-xl border border-green-500 border-opacity-30 flex items-center gap-4">
+                                    <i class="fas fa-brain text-2xl text-green-400"></i>
+                                    <div>
+                                        <p class="font-bold text-white uppercase text-xs tracking-widest mb-1">AI Analysis</p>
+                                        <p class="text-sm">객체 탐지 및 중복 필터링 기반 결함 분류</p>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-800 bg-opacity-50 p-4 rounded-xl border border-green-500 border-opacity-30 flex items-center gap-4">
+                                    <i class="fas fa-file-contract text-2xl text-green-400"></i>
+                                    <div>
+                                        <p class="font-bold text-white uppercase text-xs tracking-widest mb-1">Auto Reporting</p>
+                                        <p class="text-sm">추론 데이터 기반 자동화 안전 진단 보고서</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">BM / MARKET</span> 솔루션 당위성 (1/4)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 22: BM 2/4 -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">06. 비즈니스 모델 및 시장성 (2/4)</h1>
+                        <p class="slide-subtitle">시장 기회 및 타겟 분석</p>
+                    </div>
+                </div>
+                <div class="content-area pt-8">
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="card border border-slate-600 bg-slate-900 bg-opacity-60">
+                            <h4 class="text-xl font-bold highlight-accent mb-4"><i class="fas fa-globe mr-2"></i> 시장 거시 환경</h4>
+                            <ul class="text-sm text-slate-300 ml-4 list-disc space-y-2">
+                                <li>노후 건축물 급증 (약 30년 이상 노후화율 급증), 약 5년 주기의 정밀 점검 국가 강제 의무화</li>
+                                <li>
+                                    아파트 외벽은 「시설물의 안전 및 유지관리 특별법」에 따른
+정기 안전점검 체계 안에서 약 5년 주기로 점검 대상이 되며, 균열·박리·탈락 위험 확인이 필수 항목에 포함된다.
+                                </li>
+                                <li>글로벌 드론 서비스 산업 약 107조 원 규모 성장</li>
+                            </ul>
+
+                            <div>
+                                
+                            </div>
+                        </div>
+                        
+                        <div class="card border border-indigo-600 bg-indigo-900 bg-opacity-20 mt-2">
+                            <h4 class="text-xl font-bold text-indigo-400 mb-4"><i class="fas fa-bullseye mr-2"></i> 핵심 타겟 스펙트럼 (Who pays?)</h4>
+                            <div class="grid grid-cols-3 gap-6">
+                                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center">
+                                    <i class="fas fa-building text-3xl text-indigo-400 mb-3"></i>
+                                    <div class="font-black text-indigo-300 mb-1 italic">1차 민간</div>
+                                    <div class="font-bold text-white text-lg">아파트 관리단</div>
+                                </div>
+                                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center">
+                                    <i class="fas fa-hard-hat text-3xl text-indigo-400 mb-3"></i>
+                                    <div class="font-black text-indigo-300 mb-1 italic">2차 전문</div>
+                                    <div class="font-bold text-white text-lg">안전 진단 업체</div>
+                                </div>
+                                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center">
+                                    <i class="fas fa-landmark text-3xl text-indigo-400 mb-3"></i>
+                                    <div class="font-black text-indigo-300 mb-1 italic">3차 공공</div>
+                                    <div class="font-bold text-white text-lg">지자체 및 국토부</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">BM / MARKET</span> 타겟 세그먼트 (2/4)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 23: BM 3/4 -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">06. 비즈니스 모델 및 시장성 (3/4)</h1>
+                        <p class="slide-subtitle">핵심 수익화 파이프라인 (Pricing 전략)</p>
+                    </div>
+                </div>
+                <div class="content-area pt-4">
+                    <div class="card p-0 overflow-hidden bg-slate-900 border-slate-600">
+                        <table class="premium-table w-full text-center">
+                            <thead class="bg-slate-800">
+                                <tr>
+                                    <th class="text-center tracking-widest uppercase">구분 (Type)</th>
+                                    <th class="text-center tracking-widest uppercase">서비스 핵심 가치 (Value)</th>
+                                    <th class="text-center text-blue-300">초기 매출 단가 추정</th>
+                                    <th class="text-center text-yellow-300">상용(확장)기 규모</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm">
+                                <tr class="bg-slate-800 bg-opacity-30 hover:bg-opacity-50 transition">
+                                    <td class="font-bold border-r border-slate-700">A. B2B 점검 대행<br>(아파트 단지형)</td>
+                                    <td class="text-left border-r border-slate-700">
+                                        기체, 조종, 통신, 리포트 산출 <strong>End-to-End</strong> 현장 용역<br>
+                                        <span class="text-xs text-slate-400 opacity-80">(일회성 수익 vs 다단지 정기 연간 유지보수 계약 체결)</span>
+                                    </td>
+                                    <td class="font-mono text-blue-200">단지당 200~600만 +<br>(연 계약: 500~900만)</td>
+                                    <td class="font-mono text-yellow-100 border-l border-slate-700">단지당 700~1.2천만 +<br>(연 계약: 900~1.5천만)</td>
+                                </tr>
+                                <tr class="bg-slate-800 bg-opacity-30 hover:bg-opacity-50 transition">
+                                    <td class="font-bold border-r border-slate-700">B. B2B 소프트웨어<br>(구독형 SaaS)</td>
+                                    <td class="text-left border-r border-slate-700">
+                                        안전 진단 전문 기업의 자체 조종 데이터 <strong>플랫폼 업로드</strong> 구조.<br>Wall-E의 강력한 백엔드 AI 분석 코어 렌트 및 양식 자동 출력.
+                                    </td>
+                                    <td class="font-mono text-blue-200">업종/Seat별 월 사용권<br>50~200만 원/月</td>
+                                    <td class="font-mono text-yellow-100 border-l border-slate-700">프리미엄 API/옵션<br>200~600만 원/月</td>
+                                </tr>
+                                <tr class="bg-slate-800 bg-opacity-30 hover:bg-opacity-50 transition">
+                                    <td class="font-bold border-r border-slate-700">C. B2G 인프라<br>(국가 안전망 입찰)</td>
+                                    <td class="text-left border-r border-slate-700 text-green-300 font-bold">
+                                        대형 교량, 댐, 항만 등 사람이 오를 수 없는 국가 지정 안전 인프라 점검 국책 사업 발주 컨소시엄.
+                                    </td>
+                                    <td class="font-mono text-blue-200">프로젝트 단건 발주<br>2,000~5,000만 원</td>
+                                    <td class="font-mono text-yellow-100 font-bold border-l border-slate-700">메가 인프라 컨소시엄<br>수억 원 이상/件</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">BM / MARKET</span> 수익 창출 모델 (3/4)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 24: BM 4/4 -->
+        <div class="slide">
+            <div class="slide-container">
+                <div class="bg-pattern"></div>
+                <div class="header">
+                    <div class="title-area">
+                        <h1 class="slide-title">06. 비즈니스 모델 및 시장성 (4/4)</h1>
+                        <p class="slide-subtitle">리스크 매니지먼트 및 핵심 경쟁력 (Moat)</p>
+                    </div>
+                </div>
+                <div class="content-area pt-8">
+                    <div class="grid grid-cols-2 gap-8 h-full">
+                        <div class="card bg-slate-800 border-slate-600">
+                            <h4 class="text-xl font-bold highlight-accent mb-6"><i class="fas fa-gem mr-2"></i> WALL-E의 절대 가치</h4>
+                            <div class="grid grid-cols-2 gap-6 h-full">
+                                <div class="bg-slate-900 rounded-xl p-6 border border-slate-700 flex flex-col justify-center gap-2">
+                                    <i class="fas fa-coins text-4xl text-blue-400 mb-2"></i>
+                                    <p class="font-bold text-white text-lg">비용 감축</p>
+                                    <p class="text-sm text-slate-500">고정 설치비를 발생원부터 소거.</p>
+                                </div>
+                                <div class="bg-slate-900 rounded-xl p-6 border border-slate-700 flex flex-col justify-center gap-2">
+                                    <i class="fas fa-shield-alt text-4xl success-text mb-2"></i>
+                                    <p class="font-bold text-white text-lg">인명 피해 Zero</p>
+                                    <p class="text-sm text-slate-500">위험 환경의 로봇 기반 작업 전환.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card border border-red-900 border-opacity-70 bg-gradient-to-br from-slate-900 to-black">
+                            <h4 class="text-xl font-bold text-red-400 mb-6"><i class="fas fa-user-secret mr-2"></i>사업화 최고 리스크 방어망 설계</h4>
+                            
+                            <div class="bg-red-900 bg-opacity-20 p-4 rounded mb-6 border-l-4 border-red-500">
+                                <h5 class="font-bold text-white mb-2">프라이버시(사생활 침해) & 개인정보보호법</h5>
+                                <p class="text-sm text-slate-300">드론을 활용한 주거지/아파트 비행 시 피할 수 없는 최고 핵심 법률 마찰. 거주민의 자택 내부 노출 우려에 대한 완벽한 대책이 부재하면 상용 계약 100% 불가결.</p>
+                            </div>
+
+                            <div class="bg-green-900 bg-opacity-20 p-4 rounded border-l-4 border-green-500">
+                                <h5 class="font-bold text-green-400 mb-2">해결책: AI 추적 자동 마스킹 (Privacy Blind)</h5>
+                                <p class="text-sm text-slate-300">국제 보안 표준(TÜV SÜD 등) 컴플라이언스를 선제 적용. 스트림 파이프라인 단에서 드론 카메라에 창문 영역이나 사람 얼굴이 들어오는 즉시 <strong>로컬 메모리 단에서 즉각적인 광학 블러를 입히고 송출</strong>하여 악의적 유출 원천 금지.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div>2026-02-24 | Wall-E Result Report</div>
+                    <div><span class="highlight-text">BM / MARKET</span> 시장 우위 경쟁력 및 통제 (4/4)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 25: Thank you -->
+        <div class="slide">
+            <div class="slide-container" style="justify-content: center; align-items: center;">
+                <div class="bg-pattern" style="opacity: 0.1"></div>
+                <div style="z-index: 10; text-align: center;">
+                    <h1 class="text-8xl font-black mb-8 text-white uppercase tracking-widest" style="font-family: 'Montserrat', sans-serif;">Thank You</h1>
+                    <p class="text-2xl text-blue-400 font-bold mb-3 tracking-[0.2em]">TEAM WALL-E</p>
+                    <p class="text-sm text-slate-500">The Future of Safety Infrastructure</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Navigation Overlays -->
+    <div id="nav-overlay">
+        <div class="nav-btn" onclick="toggleFullScreen()" title="전체화면"><i class="fas fa-expand"></i></div>
+        <div class="nav-btn" onclick="prevSlide()"><i class="fas fa-chevron-left"></i></div>
+        <div class="nav-btn" onclick="nextSlide()"><i class="fas fa-chevron-right"></i></div>
+    </div>
+
+    <div id="counter-overlay">
+        <span id="current-page">1</span> / <span id="total-pages">25</span>
+    </div>
+
+    <script>
+        const container = document.getElementById('presentation-container');
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function updateScaling() {
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
+            const scaleW = winW / 1280;
+            const scaleH = winH / 720;
+            const scale = Math.min(scaleW, scaleH);
+            
+            container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+
+        window.addEventListener('resize', updateScaling);
+        window.addEventListener('load', updateScaling);
+        updateScaling();
+
+        function updateSlide() {
+            closeZoom();
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                }
+            });
+            document.getElementById('current-page').innerText = currentSlide + 1;
+            document.getElementById('total-pages').innerText = slides.length;
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+
+        // Initialize total pages
+        document.getElementById('total-pages').innerText = slides.length;
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().then(() => {
+                    setTimeout(updateScaling, 100);
+                }).catch((err) => {
+                    console.error(`Full-screen mode error: ${err.message} (${err.name})`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().then(() => {
+                        setTimeout(updateScaling, 100);
+                    });
+                }
+            }
+        }
+
+        // F키를 눌러도 전체화면이 되도록 단축키 추가
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'f' || e.key === 'F') {
+                toggleFullScreen();
+            }
+        });
+
+        // 이미지 클릭 확대 기능 (Layout-Based)
+        const overlay = document.getElementById('zoom-overlay');
+        const zoomedImg = document.getElementById('zoomed-image');
+
+        function openZoom(src) {
+            zoomedImg.src = src;
+            overlay.classList.add('active');
+        }
+
+        function closeZoom() {
+            overlay.classList.remove('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const images = document.querySelectorAll('img:not(#zoomed-image):not(.no-zoom)');
+            images.forEach(img => {
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openZoom(img.src);
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

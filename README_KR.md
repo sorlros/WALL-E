@@ -21,10 +21,19 @@ graph TD
 
     Drone -- "1. 원본 영상 송출<br/>(720p, 30fps)" --> RTMP
     RTMP -- "2. 비디오 스트림 풀링" --> Backend
-    Backend -- "4. AI 추론 및 처리 결과 저장<br/>(Mission, Detections)" --> DB
-    Backend -- "3. 모바일 최적화 송출<br/>(MJPEG, 720p 30fps)" --> App
-    App -- "5. API 관리 요청" --> Backend
-    App -- "6. 갤러리 이미지 로드" --> DB
+    
+    subgraph "AI 엔진 (3-Track 비동기)"
+        Backend -- "3a. 균열 탐지 (YOLOv11n)" --> AI
+        Backend -- "3b. 프라이버시 보호 (Window Model)" --> AI
+        AI -- "3c. Re-ID 중복 필터링" --> AI
+    end
+
+    Backend -- "4. AI 결과 및 이미지 저장<br/>(Supabase Auth 연동)" --> DB
+    Backend -- "5. 모바일 최적화 송출<br/>(MJPEG + BBox 합성)" --> App
+    Backend -- "6. 실시간 메타데이터<br/>(WebSocket/JSON)" --> App
+    
+    App -- "7. 수동 캡처 요청" --> Backend
+    App -- "8. 갤러리 및 기록 로드" --> DB
 ```
 
 ---
@@ -45,21 +54,25 @@ graph TD
 ## 📅 프로젝트 핵심 파이프라인 (Project Pipeline)
 
 ### 1. 🧠 AI & Computer Vision Part
-드론 영상에서 실시간으로 균열(Crack)을 찾고 중복을 거르는 핵심 엔진입니다.
-*   **객체 탐지 (Object Detection)**: YOLO11n (Nano) - 초고속 실시간 형태 인식.
-*   **중복 균열 필터링 (Re-Identification)**: `MobileNetV3-small` 모델 기반.
-    *   동일한 균열이 드론 흔들림에 의해 여러 장 찍히는 것을 방지합니다.
-    *   균열 부분을 잘라내어(Crop) 576차원 임베딩으로 변환 후, 최근 캐시와 **코사인 유사도(Cosine Similarity)**를 비교해 80% 이상 일치 시 저장을 무시(Drop)합니다.
-*   **데이터셋 증강 (Augmentation)**:
-    *   `Albumentations`를 활용하여 수직 비행 흔들림(Shift), 잔상(Motion Blur), 역광 등을 완벽하게 모사합니다.
-    *   Hard Negative Mining을 통해 전선, 타일 이음새 등 가짜 균열 사진들을 Background 클래스로 추가하여 오탐지를 획기적으로 낮췄습니다.
+실시간 모니터링, 중복 탐지 방지 및 사생활 보호를 위한 통합 AI 엔진입니다.
+*   **멀티 모델 탐지 파이프라인**:
+    *   **균열 탐지 (Crack Detection)**: YOLOv11n (Nano) - 초고속 실시간 구조적 결함 인식.
+    *   **사생활 보호 (Privacy Protection)**: **창문 탐지 모델** 탑재. 비행 중 건물 내부 노출 방지를 위해 실시간으로 창문 영역을 탐지하고 가우시안 블러(Gaussian Blur)를 적용합니다.
+*   **중복 균열 필터링 (Re-Identification)**: `MobileNetV3-small` 기반.
+    *   드론의 배회 및 흔들림으로 인해 동일 균열이 중복 저장되는 것을 방지합니다.
+    *   576차원 임베딩 추출 후 **코사인 유사도(80% 임계치)** 비교를 통해 정교하게 필터링합니다.
+*   **고도화된 데이터 증강 (Albumentations)**: 
+    - 수직 비행 환경의 흔들림, 모션 블러, 극한의 역광 등을 모사하여 강건한 모델 학습.
+    - **Hard Negative Mining**을 통해 전선, 타일 이음새 등을 Background로 학습시켜 오탐지율을 획기적으로 개선.
 
-### 2. ⚙️ Backend & Architecture Part
-스레드 병목을 없애 지연 시간(Zero Latency)을 달성한 3-Track 비동기 아키텍처입니다.
-*   **Thread 1 (카메라 수신 전문)**: 영상 인코딩/AI 연산을 배제하고 오직 메모리에 최신 드론 프레임을 퍼나르는 버퍼 방어 역할.
-*   **Thread 2 (AI 추론 전문)**: 최신 프레임을 도둑질해 YOLO 추론 후 BBox 업데이트 + Re-ID 필터링 + 수동 캡처 이미지 DB 비동기 저장.
-*   **Thread 3 (모바일 송출 전문)**: 1번 스레드의 사진과 2번 스레드의 박스 좌표를 합성하여 720p 30FPS로 화질을 최적화해 스마트폰에 MJPEG로 쏘아줌.
-*   **Database & Storage**: Supabase (PostgreSQL) - 탐지 내역, 모바일 사용자 인증(Auth), 이미지 스토리지 통합.
+### 2. ⚙️ Backend & 3-Track Architecture
+멀티 모델의 동시 추론 부하를 분산하고 지연 시간을 제로화한 설계입니다.
+*   **Thread 1 (영상 수신)**: 고속 버퍼를 통한 드론 원본 프레임의 실시간 메모리 적재 담당.
+*   **Thread 2 (AI 추론)**: AI 파이프라인(균열 탐지 -> 창문 블러 -> ReID -> 저장)을 전담 수행.
+*   **Thread 3 (데이터 송출)**:
+    - **Video Channel**: BBox가 합성된 MJPEG(720p 30FPS) 영상을 앱으로 실시간 송출.
+    - **Metadata Channel**: **WebSocket**을 통해 탐지 이벤트(JSON)를 즉시 전송하여 앱 UI 상태를 갱신.
+*   **Storage**: Supabase를 사용하여 탐지 데이터, 인증 및 이미지 보안 스토리지를 통합 관리.
 
 ### 3. 📱 Frontend (App) Part
 사용자가 딜레이 없이 영상을 관제하고 드론을 제어하는 인터페이스입니다.
@@ -150,3 +163,10 @@ flutter run -d R3CY30EEH2R
 - **MobileNetV3 중복 필터링 (Re-ID)**: YOLO 트래킹 ID의 추적 한계를 극복하기 위해, 임베딩 코사인 유사도 연산(80% Threshold, 10% Margin)을 통한 딥러닝 기반 재식별 시스템 구비.
 - **수동 캡처(Manual Capture) 연동**: 라이브 뷰 화면 내 플로팅 버튼(FAB)으로 사용자 수동 점검 기록 기능 및 식별 뱃지 추가.
 - **데이터 증강 전략 수립**: Albumentations 적용 (상하 흔들림, 잔상) 및 Hard Negative Mining(전선, 메지 등 함정 객체를 Background로 혼합) 기법 설계. 
+
+### 📍 2026.02.21 ~ 02.24 (Phase 4: 멀티 모델 통합 및 결과 보고)
+- **프라이버시 모드 (Window Detecting)**: 2차 YOLO 모델을 통합하여 창문을 실시간 탐지하고 블러 처리함으로써 도심 검사 시 개인정보 보호 컴플라이언스 준수.
+- **WebSocket 메타데이터 채널**: 무거운 영상 데이터와 가벼운 탐지 이벤트를 분리하여 개별 스트림으로 송출하도록 구현.
+- **최종 결과 보고서 (HTML/PPT)**: 고해상도 인터랙티브 HTML 발표자료 및 자동화된 PPT 생성 스크립트 구축.
+- **스타일 동기화**: 기술 프로토타입과 최종 리포트 간의 AI 상세 분석 슬라이드 디자인 및 데이터 100% 동기화.
+- **시스템 안정화**: MacBook 하드웨어 자원을 고려하여 듀얼 모델 동시 구동 시의 리소스 점유율 최적화.

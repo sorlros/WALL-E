@@ -1,0 +1,17 @@
+{
+    "experiment_name": "baseline_verification",
+    "transforms": [
+        {
+            "name": "HorizontalFlip",
+            "params": { "p": 0.5 }
+        },
+        {
+            "name": "RandomBrightnessContrast",
+            "params": { "p": 0.5, "brightness_limit": 0.2, "contrast_limit": 0.2 }
+        },
+        {
+            "name": "MotionBlur",
+            "params": { "p": 0.3, "blur_limit": 7 }
+        }
+    ]
+}

@@ -1,100 +1,173 @@
 [🇺🇸 English](README.md) | [🇰🇷 한국어](README_KR.md)
 
-# 🛸 Wall-E: Drone-based Exterior Crack Detection System
-> **Project Duration:** 2026.02.09 ~ 2026.02.25 (Half Month)
+# 🛸 Wall-E: Drone-Based Exterior Crack Detection System
+> **Project Duration:** 2026.02.09 ~ 2026.02.25 (16 Days)
 
-**Wall-E** is an automated system designed to inspect building exteriors for cracks and defects using drone imagery. Our solution leverages computer vision to detect, classify, and visualize structural anomalies, ensuring safer and more efficient maintenance workflows.
+**Wall-E** is an automated inspection system that utilizes drone imagery to detect cracks and defects on building exteriors. Our solution leverages computer vision technology and a hyper-converged multi-threaded streaming architecture to identify, classify, and visualize structural anomalies, providing a safer and more efficient maintenance workflow.
+
+---
+
+## 🏗️ System Architecture
+
+Video captured by the drone is streamed to the user's smartphone (Flutter app), while a backend video server acts as the intermediary, handling real-time AI analysis and duplicate filtering. 
+
+```mermaid
+graph TD
+    Drone["🚁 Drone (DJI Phantom 4 Pro)"]
+    RTMP["📡 Media Server (MediaMTX)<br/>[RTMP 1935]"]
+    Backend["💻 Backend Server (FastAPI/Python)<br/>[HTTP 8000]"]
+    DB[("🐘 Database<br/>(Supabase PostgreSQL)")]
+    App["📱 Client App (Flutter)<br/>[Android/iOS]"]
+
+    Drone -- "1. Raw Live Stream<br/>(720p, 30fps)" --> RTMP
+    RTMP -- "2. Video Stream Polling" --> Backend
+    
+    subgraph "AI Engine (3-Track Async)"
+        Backend -- "3a. Crack Detection (YOLOv11n)" --> AI
+        Backend -- "3b. Privacy Blur (Window Model)" --> AI
+        AI -- "3c. Re-ID Deduplication" --> AI
+    end
+
+    Backend -- "4. AI Results & Images<br/>(Supabase Auth context)" --> DB
+    Backend -- "5. Mobile-Optimized Stream<br/>(MJPEG with Burn-in BBox)" --> App
+    Backend -- "6. Real-time Metadata<br/>(WebSocket/JSON)" --> App
+    
+    App -- "7. Manual Capture Requests" --> Backend
+    App -- "8. Load Gallery & History" --> DB
+```
 
 ---
 
 ## 👥 Team Structure & Roles
 
-We operate as a cross-functional team of 4, with clear responsibilities to ensure agile development and high-quality deliverables.
+👉 **[View Project Kanban Board (GitHub Projects)](https://github.com/orgs/WallEproject/projects/1/views/1)**
 
 | Role | Responsibilities | Key Focus Areas |
 |------|------------------|-----------------|
-| **Project Manager (PM)** | product vision, scheduling, requirements definition | User stories, Sprint planning, Documentation, Stakeholder communication |
-| **Backend Developer** | Server architecture, API design, Database management | FastAPI/Django, REST/GraphQL design, Data integrity, Cloud deployment |
-| **AI Model Developer** | Model training (YOLO), Optimization, Inference logic | Dataset preparation, Model accuracy (mAP), Real-time processing speed |
-| **UI/UX Developer** | Mobile app development, User Interface design | Flutter implementation, User experience flow, Responsive design, State management |
+| **Project Architecture (PA)** | System Architecture, Tech Direction, Documentation | 3-Track Async Architecture Design, System Integration |
+| **Backend Developer** | Server Architecture, API, DB Design | FastAPI, Supabase, REST API, StreamManager Multi-threading |
+| **AI Model Developer** | Model Training (YOLO), Re-ID Logic | Albumentations Augmentation, MobileNetV3 Embedding, Inference |
+| **Frontend Developer** | Mobile App Development (Flutter) | Floating Action Button (FAB), MJPEG Live Stream View, State Management |
 
 ---
 
-## 🛠 Tech Stack & Version Standards
+## 📅 Core Project Pipeline
 
-To ensure consistency across local environments and CI/CD pipelines, all team members **must** adhere to the following version standards.
+### 1. 🧠 AI & Computer Vision Part
+The core engine for real-time inspection, duplicate prevention, and privacy protection.
+*   **Multi-Model Detection Pipeline**:
+    *   **Crack Detection**: YOLOv11n (Nano) - Optimized for ultra-fast structural anomaly recognition.
+    *   **Privacy Protection**: Built-in **Window Detection** model. Automatically applies Gaussian Blur (Pixel-level) to building interiors to protect resident privacy during flight.
+*   **Duplicate Filtering (Re-Identification)**: Powered by the `MobileNetV3-small` model.
+    *   Prevents storing multiple images of the same crack caused by drone shaking or hovering.
+    - Compares 576-dimensional embeddings using **Cosine Similarity** (80% Threshold).
+*   **Advanced Augmentation (Albumentations)**: 
+    - Simulates vertical flight shaking, Motion Blur, and aggressive sunlight.
+    - Uses **Hard Negative Mining** to treat wires and tile joints as Background to minimize False Positives.
 
-### Core Environment
-- **Python:** `3.10.12` (Required for AI/Backend consistency)
-- **Java (JDK):** `17` (LTS - Required for Android build & backend compatibility)
-- **Node.js:** `LTS (v20.x)` (If required for tooling)
+### 2. ⚙️ Backend & 3-Track Architecture
+A Zero-Latency architecture designed for multi-model concurrent inference.
+*   **Thread 1 (Reception)**: Dedicated to dumping raw drone frames into a high-speed buffer.
+*   **Thread 2 (Inference)**: Orchesrates the AI Pipeline (Crack Detect -> Window Blur -> ReID -> DB Save).
+*   **Thread 3 (Broadcast)**:
+    - **Video Channel**: Streams MJPEG (720p 30FPS) with BBox burn-in for instant user feedback.
+    - **Metadata Channel**: Dispatches real-time JSON detection alerts via **WebSocket** to drive the Flutter UI state.
+*   **Storage**: Supabase handles all structural data, authentication, and secure image hosting.
 
-### Mobile App (Frontend)
-- **Framework:** **Flutter 3.19.x**
-- **Dart:** `3.3.x`
-- **Minimum Target SDK:** Android API 26 / iOS 12.0
-
-### AI & Computer Vision
-- **Library:** **OpenCV 4.9.0** (Headless for server, full for local debug)
-- **Model:** **YOLOv8** (via `ultralytics` package 8.1.x)
-- **CUDA:** `11.8` or `12.1` (Ensure compatibility with PyTorch version)
-
-### Backend & Protocol
-- **Communication:** RTSP/RTMP (Real-time video streaming)
-- **API Style:** RESTful API (JSON)
-- **Database:** PostgreSQL (v15) / Redis (Caching)
-
----
-
-##  Workflow & Conventions
-
-### Project Management
-[View Project Board](https://github.com/orgs/WallEproject/projects/1/views/1)
-
-### Git Flow
-We follow the **Git Flow** strategy to manage our codebase effectively.
-- `main`: Production-ready code. Protected branch.
-- `develop`: Integration branch for features.
-- `feature/*`: Feature-specific branches (e.g., `feature/login-screen`, `feature/yolo-model-training`).
-
-### 🌿 Branch Strategy
-
-All team members must follow the branch naming conventions below.
-
-| Role | Branch Name Example (Prefix/Topic) | Key Tasks |
-| :--- | :--- | :--- |
-| **PM (Docs/Env)** | `docs/prd-update`, `env/set-gitignore` | Documentation, Common environment setup |
-| **AI Developer** | `feature/ai-yolo-v8-train`, `feature/ai-mask-overlay` | Model training, Result visualization logic |
-| **Backend/Drone** | `feature/drone-rtsp-stream`, `fix/drone-connection-lag` | Drone video streaming, Communication bug fixes |
-| **Frontend (App)** | `feature/app-main-ui`, `feature/app-video-widget` | App layout, Video display widget |
-
-**Note:** All feature development must branch off from `develop`, and PRs must be sent to `develop` upon completion.
-
-### Commit Message Convention
-Please follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation only changes
-- `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc)
-- `refactor`: A code change that neither fixes a bug nor adds a feature
+### 3. 📱 Frontend (App) Part
+The interface for users to monitor zero-delay video and control drone inspections.
+*   **Real-time Monitoring**: Utilizing `flutter_mjpeg` to hit 30FPS perfectly without black screens or memory leaks.
+*   **Manual Capture**: Users can actively record hazards using a Floating Action Button (FAB) during live streaming, instantly saving to DB (`is_manual=true`) equipped with a dedicated visually distinctive badge.
+*   **Gallery & Map Integration**: Google Maps screens check mission locations, reviewing results (BBox Box On/Off) dynamically.
 
 ---
 
-## 🚀 Getting Started
+## 🛠 Tech Stack
 
-### 1. Prerequisites
-Ensure you have the required versions of Python, Java, and Flutter installed.
+### Core
+*   **Language**: Python 3.10+, Dart 3.3+
+*   **AI**: YOLOv11 (`ultralytics`), PyTorch (`MobileNetV3`), OpenCV, Albumentations
+*   **Backend**: FastAPI, SQLAlchemy, PostgreSQL (`psycopg2`)
+*   **Frontend**: Flutter 3.19+
 
-### 2. Clone Repository
+### Infrastructure
+*   **DB/Auth/Storage**: Supabase (Cloud)
+*   **Streaming Server**: MediaMTX (RTMP)
+    *   **Stream Route**: `rtmp://<Server-IP>:1935/live/drone`
+
+---
+
+## 🌊 Getting Started
+
+### 1. Environment Setup
+
+#### Backend
 ```bash
-git clone https://github.com/WallEproject/WallE.git
-cd skypatch
-```
-
-### 3. Setup (Example)
-```bash
-# Python Environment
-python3.10 -m venv venv
-source venv/bin/activate
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+> ※ Requires the AI offline weight models (`backend/models/mobile_net_v3_small.pth`).
+
+#### Database (Supabase)
+Configure Supabase connection info in the `.env` file.
+```env
+DATABASE_URL=postgresql://user:pass@host:6543/postgres
+SUPABASE_URL=...
+SUPABASE_KEY=...
+RTMP_URL=rtmp://localhost:1935/live/drone
+```
+
+### 2. Execution
+
+#### RTMP Media Server (MediaMTX)
+* The `mediamtx` server is currently running on a **team member's Windows/Linux desktop**, not on this MacBook.
+* **Port Forwarding** has been configured on port `1935` to allow the drone and the backend server to access the video feed externally.
+* There is no need to manually start the media server on this local machine.
+
+#### Backend Server
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Start Frontend App
+cd frontend
+flutter run
+```
+
+---
+
+## 🚀 Development Timeline
+
+### 📍 2026.02.11 ~ 02.13 (Phase 1: Foundation & Base Infrastructure)
+- **Unified DB/Auth Infrastructure**: Configured the initial Supabase PostgreSQL schema and deployed functional Login/Signup endpoints via FastAPI.
+- **Real-Time Baseline**: Bootstrapped MediaMTX integrations, foundational OpenCV frame captures, and localized Bounding Box overlays.
+- **Object Tracking Implementation**: Integrated YOLO's `model.track()` and an active ID cache `Set` to prevent multi-saves of static drone footage.
+- **Core Flutter Scaffolding**: Structured the baseline App UI routes spanning across New Mission, Gallery, and Profile screens.
+
+### 📍 2026.02.16 (Refactoring Day & UX Improvements)
+- **Frontend Type Safety Assured**: Solidified API responses by introducing strict `Mission`, `Detection`, and `User` Dart models.
+- **Zero-Delay & BBox Ratio Fix**: Removed pre-inference padding to precisely map bounding box coordinates over raw frames, eliminating y-axis displacement.
+- **Gallery UI Upgrades**: Implemented PageView swipe navigation and responsive Landscape/Portrait bounds on the detail screen.
+- **Backend Metadata Hierarchy Swap**: Optimized overall DB structural integrity by migrating GPS variables strictly from detections upwards to the missions table.
+
+### 📍 2026.02.17 ~ 02.19 (Phase 2: Streaming Paradigm Shift & Data Security)
+- **Google Maps Integration**: Shifted static map placeholders to the active Google Maps Static API for active mission locale and GPS coordinate tracking.
+- **Data Isolation (RLS)**: Enforced strict Supabase Row Level Security protocols, ensuring users only access their personal flight registries.
+- **Streaming Protocol Shift (HLS ➔ MJPEG)**: Physically bypassed HLS buffering latency (3-5s) and WebSocket Desync bugs by having the backend pre-burn coordinate boxes uniformly into MJPEG payloads.
+- **OpenCV Backend Auto-Detection**: Dropped explicit `CAP_FFMPEG` allocations to guarantee stable Mac Apple Silicon and Server hardware-accelerated video encodings.
+- **UX & Localization Bug Fixes**: Obliterated Korean UTF-8 encoding corruption bugs and formally solidified Android permission configurations.
+
+### 📍 2026.02.20 (Phase 3: Real-Time Optimization & AI Enhancement)
+- **3-Track Async Streaming Architecture**: Fully decoupled video reception, AI inference, and client broadcast, erasing Stuttering bottlenecks to realize Zero-Latency.
+- **Mobile Streaming Optimization**: Resolved stuttering and black screens by importing `flutter_mjpeg` and enforcing 720p 30FPS server-side resizing.
+- **MobileNetV3 Deduplication (Re-ID)**: Mitigated multi-save tracking limitation scenarios caused by drone wobble using embedding Cosine Similarity (80% Threshold / 10% Margin).
+- **Manual Capture Integration**: Granted users unilateral snapshot power via a live frontend FAB, tagging them in DB as explicit "Manual Captures".
+- **Augmentation Pipeline Plan**: Drafted robust data strategies detailing vertical-shift focus and Hard Negative Mining (e.g. electrical wires, concrete joints) via Albumentations.
+
+### 📍 2026.02.21 ~ 02.24 (Phase 4: Multi-Model Integration & Results)
+- **Privacy Mode (Window Model)**: Integrated a secondary YOLO model to detect and blur windows in real-time, ensuring privacy compliance during urban inspections.
+- **WebSocket Metadata Channel**: Implemented a standalone metadata stream to separate heavy image data from lightweight detection events.
+- **Final Result Report (HTML/PPT)**: Developed a high-fidelity interactive HTML presentation and automated PPT generation scripts for stakeholders.
+- **Style Synchronization**: Perfectly matched AI detailed analysis slides between technical prototypes and final reports.
+- **System Hardening**: Optimized MacBook hardware resource allocation for dual-model concurrent execution.

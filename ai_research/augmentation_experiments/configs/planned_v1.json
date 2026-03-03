@@ -1,0 +1,56 @@
+{
+    "experiment_name": "planned_vertical_focus",
+    "description": "3m distance, fixed front, vertical movement focus",
+    "transforms": [
+        {
+            "name": "OneOf",
+            "params": {
+                "p": 0.3,
+                "transforms": [
+                    { "name": "MotionBlur", "params": { "p": 1, "blur_limit": 7 } },
+                    { "name": "GaussianBlur", "params": { "p": 1, "blur_limit": 5 } }
+                ]
+            }
+        },
+        {
+            "name": "RandomBrightnessContrast",
+            "params": { "p": 0.5, "brightness_limit": 0.2, "contrast_limit": 0.2 }
+        },
+        {
+            "name": "ISONoise",
+            "params": { "p": 0.3, "intensity": [0.1, 0.5], "color_shift": [0.01, 0.05] }
+        },
+        {
+            "name": "HueSaturationValue",
+            "params": { "p": 0.3, "hue_shift_limit": 10, "sat_shift_limit": 20, "val_shift_limit": 10 }
+        },
+        {
+            "name": "CLAHE",
+            "params": { "p": 0.3, "clip_limit": 2.0, "tile_grid_size": [8, 8] }
+        },
+        {
+            "name": "Sharpen",
+            "params": { "p": 0.3, "alpha": [0.2, 0.5], "lightness": [0.5, 1.0] }
+        },
+        {
+            "name": "ShiftScaleRotate",
+            "params": {
+                "p": 0.5,
+                "shift_limit_y": 0.1,
+                "shift_limit_x": 0.02,
+                "scale_limit": 0.0,
+                "rotate_limit": 5,
+                "border_mode": 0,
+                "value": 114
+            }
+        },
+        {
+            "name": "HorizontalFlip",
+            "params": { "p": 0.5 }
+        },
+        {
+            "name": "Resize",
+            "params": { "height": 512, "width": 512, "p": 1.0 }
+        }
+    ]
+}
